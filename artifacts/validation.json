@@ -1,0 +1,40 @@
+{
+  "recorded_at": "2026-11-10T18:50:44.641347-03:00",
+  "base_commit": "dabaa1a57b54350b72a91ee821c965a7bbb6b455",
+  "branch": "codex/remora-matriz-objetiva",
+  "baseline_sha256": "2479ed8e5c9189438d787be1e804abbd95f9e1c06e01042e560251e64ef67fc5",
+  "candidate_sha256": "8ab7d8b0476264ccfe37fddf43a4fb87c0967676dfb57648160e2f3b54aec2d9",
+  "engine_sha256": "9bd44f13e61845be3c490a802035667da5ff0cb491f9b5a6bb127722b09a1b08",
+  "baseline_functions": 312,
+  "protected_literal_functions": 253,
+  "baseline_inputs": 73,
+  "candidate_inputs_including_module": 65,
+  "tests": {
+    "executed": 61,
+    "passed": 61,
+    "failed": 0,
+    "skipped": 0,
+    "entry": 11,
+    "financial": 15,
+    "engine": 15,
+    "runtime_simulated": 20
+  },
+  "numerical_check": {
+    "records": 8192,
+    "vwap_error_ticks": 3.492459654808044e-11,
+    "sigma_error_ticks": 3.979039320256561e-14,
+    "evidence": "artifacts/numerical-evidence.txt",
+    "not_empirical_feed_validation": true
+  },
+  "native_compilation": "COMPILACAO_NATIVA_NAO_VERIFICADA",
+  "native_tools": {
+    "metaeditor64": null,
+    "terminal64": null,
+    "wine": null,
+    "wine64": null
+  },
+  "real_feed_validation": "DADOS_INSUFICIENTES",
+  "homologation": "NAO_HOMOLOGADO",
+  "tracked_files_unchanged": true,
+  "evidence_scope": "Common-source C++ numerical/collector harnesses with explicit MT5 stubs and static source comparisons; not native MT5 execution."
+}

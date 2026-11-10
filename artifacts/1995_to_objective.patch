@@ -1,0 +1,3882 @@
+--- a/1995
++++ b/RemoraScalper_MatrizObjetiva.mq5
+@@ -1,27 +1,10 @@
+-// Candidate: ABS preserved; CONT uses frozen signal CLOSE, without pullback or region fallback.
+-// Native MetaEditor compilation and Strategy Tester validation remain pending.
+-// Scalper 1995 - experimental candidate; NOT compiled or homologated.
+-// Base: repository scalper95 (Rêmora Scalper 1.122); original kept unchanged.
+-// Authorized specification: comando scalper 1995.pdf. See docs/scalper1995.md.
+-// Historical provenance comments below are inherited, not current validation.
+-// RC12_SURGICAL_CANDIDATE_01: authorized RC1.2 PDF baseline; not production approved.
+-// RC1.2 derived directly and exclusively from RC1.1: /workspace/R-mora-/scalper 2.pdf.
+-// Canonical read-only reference: /workspace/R-mora-/5.0 Rêmora .pdf.
+-// PDF transcription repairs and operational changes have separate full diffs.
+-// CÓDIGO ESTATICAMENTE AUDITADO, MAS NÃO COMPILADO.
+-// REQUER COMPILAÇÃO NO METAEDITOR.
+-//+------------------------------------------------------------------+
+-//| Remora_Scalper_v1_122_EconomicMarkerRecovery.mq5                                        |
+-//| Descendente conceitual da Rêmora 2.44                              |
+-//| Arquitetura: M3 (Contexto) / M1 (Sinal) / Tick (Execução)              |
+-//|                              |
+-//| CÓDIGO NÃO COMPILADO — REQUER COMPILAÇÃO NO METAEDITOR.
+-// |
+-//| Edge empírico não demonstrado. Não declarar rentabilidade.               |
+-//+------------------------------------------------------------------+
++// CANDIDATE 1.996: objective entry intelligence only. NOT HOMOLOGATED.
++// Canonical original: 1995, SHA256 2479ed8e5c9189438d787be1e804abbd95f9e1c06e01042e560251e64ef67fc5.
++// Financial identity, journals and recovery remain S1995 for historical compatibility.
++// COMPILACAO_NATIVA_NAO_VERIFICADA; see AUDITORIA_PREVIA.md and REGRESSION_FINANCE.md.
+ #property copyright "Remora Scalper Research"
+-#property version "1.995" // Scalper 1995; experimental; native compilation pending.
+-#property description "Scalper 1995 - experimental MQL5 candidate; not homologated"
++#property version "1.996" // Scalper 1995; experimental; native compilation pending.
++#property description "Remora objective matrix - experimental candidate; NOT HOMOLOGATED"
+ 
+ #include <Trade\Trade.mqh>
+ #include <Trade\PositionInfo.mqh>
+@@ -31,11 +14,7 @@
+ //=====================================================================
+ enum EXIT_MODE { ORIGINAL_FIXED_TP=0, PROGRESSIVE_NO_TP=1 };
+ enum FAR_MODE { FAR_OFF=0, FAR_OBSERVAR=1, FAR_APLICAR=2 };
+-enum ABS_TRIGGER_REFERENCE
+-{
+-   ABS_TRIGGER_LEGACY_REGION=0,
+-   ABS_TRIGGER_SIGNAL_CLOSE=1
+-};
++
+ 
+ enum SIZING_MODE
+ {
+@@ -43,52 +22,17 @@
+    SIZING_RISK_PERCENT = 1 // % risco por trade
+ };
+ 
+-enum ENUM_MACRO_STATUS
+-{
+-   MACRO_NOT_COMPUTED = 0,
+-   MACRO_OK,
+-   MACRO_VWAP_INVALID,
+-   MACRO_SIGMA_INVALID,
+-   MACRO_STRUCT_INVALID,
+-   MACRO_NO_TRIGGER
+-};
+-
+-enum ENUM_MSS
+-{
+-  MSS_NOT_COMPUTED = 0,
+-  MSS_OK,
+-  MSS_MACRO_INVALID,
+-  MSS_VWAP_D1_INVALID,
+-  MSS_SIGMA_INVALID,
+-  MSS_STRUCT_INVALID,
+-  MSS_STOP_KAMIKAZE_CONT_ONLY,
+-   MSS_STOP_NO_C5_TRIGGER
+-};
+-
+-enum ENUM_APS
+-{
+-   APS_STILL_ARMED = 0,
+-   APS_ENDED_REEVAL_ALLOWED,
+-   APS_ENDED_FAIL_CLOSED,
+-   APS_TRADE_OR_POSITION
+-};
+-
+-enum ENUM_POC_STATE
+-{
+-   POCS_INVALID = 0,
+-   POCS_NO_DISPLACEMENT,
+-   POCS_FOLLOWING,
+-   POCS_DIVERGENT
+-};
++
++
++
++
++
++
++
+ 
+ //=====================================================================
+ // CONSTANTS
+ //=====================================================================
+-const int D1_SESSION_START = 900;
+-const int D1_SESSION_END_INDEX = 1825;
+-const int D1_SESSION_END_DOLLAR = 1830;
+-const int D1_MIN_M1_BARS = 480;
+-const int MAX_SEARCH_DAYS = 40;
+ #define MAX_TRADE_RECORDS 200
+ 
+ //=====================================================================
+@@ -144,68 +88,40 @@
+ input int Inp_ArmedTimeoutSec = 300; // Timeout armed (s)
+ 
+ //--- Referencia ABS (CONT usa sempre o fechamento do sinal)
+-input ABS_TRIGGER_REFERENCE Inp_ABSTriggerReference = ABS_TRIGGER_SIGNAL_CLOSE;
+ 
+ //--- Região / Rompimento
+-input int Inp_Region_Candles = 2; // Candles região (M1 fechadas)
+ input double Inp_BreakoutMargin_WIN = 175.0; // Margem rompimento WIN (pts)
+ input double Inp_BreakoutMargin_WDO = 3.5; // Margem rompimento WDO (pts)
+ input double Inp_MaxOvershoot_WIN = 100.0; // Overshoot máx WIN (pts)
+ input double Inp_MaxOvershoot_WDO           = 2.5; // Overshoot máx WDO (pts)
+ 
+ //--- Weis Wave M1
+-input double Inp_ABS_Effort = 1.50; // WW esforço ABS (C1)
+-input double Inp_CONT_Effort = 1.50; // WW esforço CONT (C1)
+-input double Inp_ABS_BreakoutEffort = 1.50; // WW onda viva ABS (Stage2)
+-input double Inp_CONT_BreakoutEffort = 1.50; // WW onda viva CONT (Stage2)
+-//--- POC M1
+-input int Inp_POC_WindowSec = 300; // authorized POC window, seconds
+-input double Inp_POC_FollowRatio = 0.40; // Razão POC segue preço
+-input bool Inp_RejectPOCTies = false; // Ablation only; baseline keeps canonical POC
++input double Inp_ABS_Effort = 1.50; // Effort of the original attempted wave, relative to previous closed waves
++input double Inp_CONT_Effort = 1.50; // Effort of the progressing wave, relative to previous closed waves
+ 
+ //--- ABS thresholds (pts — hipóteses, não declarar ótimos)
+ input double Inp_ABS_MinPriceMovePts_WIN = 60.0; // ABS displ min WIN (pts)
+-input double Inp_ABS_MaxBodyPts_WIN               = 60.0; // ABS corpo max WIN (pts)
+ input double Inp_ABS_MinPriceMovePts_WDO = 2.0; // ABS displ min WDO (pts)
+-input double Inp_ABS_MaxBodyPts_WDO                  = 2.0; // ABS corpo max WDO (pts)
+ 
+ //--- CONT thresholds (pts — hipóteses)
+ input double Inp_CONT_MinPriceMovePts_WIN = 50.0; // CONT displ min WIN (pts)
+ input double Inp_CONT_MinPriceMovePts_WDO = 1.5; // CONT displ min WDO (pts)
+-input bool Inp_Cont_RequireCandleDirection = true; // CONT: vela na direção
+ 
+ //--- Geometria VWAP (herdada da 2.44)
+ input double Inp_BandMultiplier_WIN = 0.80;
+ input double Inp_BandMultiplier_WDO = 1.50;
+-input double Inp_VWAP_Inner_Pct = 0.60;
+-input double Inp_VWAP_Outer_Pct = 1.50;
+-
+-//--- C2/C3/C4 (herdados da 2.44 — hipóteses para scalp, não validados OOS)
+-input double Inp_Rule_40_60 = 0.40;
+-input double Inp_C2_WIN = 700.0;
+-input double Inp_C3_Min_WIN = 125.0;
+-input double Inp_C3_Max_WIN = 400.0;
+-input double Inp_C2_WDO = 25.0;
+-input double Inp_C3_Min_WDO = 5.0;
+-input double Inp_C3_Max_WDO = 15.0;
+-
+-//--- Sigma histórico (ainda necessário para bandas/C2/C3/C4)
+-input int SigmaLookbackDays = 5;
+-input double Inp_SigmaFloor_WIN = 200.0;
+-input double Inp_SigmaFloor_WDO = 7.0;
++
++
+ 
+ //--- Execução
+ input int Inp_MaxDeviationPts_WIN = 100;
+ input int Inp_MaxDeviationPts_WDO = 2;
+ 
+ //--- Rotas habilitadas
+-input bool Inp_EnableMacroDirectionGate = true;
+-input bool Inp_EnableLateDirectionBlock = true;
+ input bool Inp_EnableAbsorption = true;
+ input bool Inp_EnableContinuation = true;
+ 
+ // Scalper 1995: only the five additions authorized besides split VWAP Bands.
+-input double Inp_TurboLotsMultiplier = 2.0;
+ input EXIT_MODE Inp_ExitMode = PROGRESSIVE_NO_TP;
+ input int Inp_MaxProtectedR = 5;
+ input FAR_MODE Inp_AggressionFilterMode = FAR_APLICAR;
+@@ -217,91 +133,11 @@
+ //=====================================================================
+ // STRUCTS
+ //=====================================================================
+-struct MacroContext
+-{
+-    ENUM_MACRO_STATUS status;
+-    datetime barTime;
+-    double closedPrice;
+-    double vwap;
+-    double SigmaD1; // value actually used by the closed M3 snapshot
+-    double distVWAP_D1;
+-    double posRel;
+-    bool glass;
+-    int macroAbsDir; // dir C5 ABS (M3)
+-    int macroContDir; // dir C5 CONT (M3)
+-};
+-
+-struct POCResult
+-{
+-   bool ok;
+-   double poc;
+-   double totalVolume;
+-   double lastValidPrice;
+-   int tradeCount;
+-   int levels;
+-   bool hasTie;
+-   double top1Price, top1Vol;
+-   double top2Price, top2Vol;
+-   double dominance;
+-   double buyVol, sellVol, unkVol;
+-};
+-
+-struct MatrixSnapshot
+-{
+-  ENUM_MSS status;
+-  // Bandas
+-  double vwapVig, upper, lower, bandRange;
+-  // Candle M1 fechada
+-  double price, open1, candleBody;
+-  double posRel;
+-  bool glass;
+-  // C5
+-  int dir, dirCont;
+-  bool c5AbsOk, c5ContOk;
+-  // Thresholds
+-  double distAbs;
+-  double minDispl, maxBody, contMinDispl;
+-  // C2/C3/C4
+-  bool c2, c3, c23, c4;
+-  bool c2Cont, c3Cont, c23Cont, c4Cont;
+-  double posRange;
+-  // POC
+-  POCResult pocNow, pocPrev;
+-     bool      windowsValid;
+-     double priceMove, pocMove;
+-     bool      displacementOk;
+-     int moveDir;
+-     ENUM_POC_STATE pocState;
+-     bool      contDisplacementOk;
+-     int contMoveDir;
+-     ENUM_POC_STATE contPocState;
+-     // WW
+-     bool      wwok;
+-     double effort;
+-     int waveDir;
+-     int wwWaveBars;
+-     long wwWaveAgeSec;
+-     bool wwWaveAgeAvailable;
+-     double wwAccumVolume, wwDistancePts;
+-     // C1 ABS sub
+-     bool      c1_effort_ok, c1_body_ok, c1_displacement_ok;
+-     bool      c1_movedir_ok, c1_wavedir_ok;
+-     // ABS contexts
+-     bool      absDivergence, absStallStrict, absFollowingReaction, absFollowingExtension;
+-     bool      absPocContextOk, c1;
+-     // C1 CONT sub
+-     bool      cont_effort_ok, cont_displacement_ok, cont_poc_ok;
+-     bool      cont_movedir_ok, cont_wavedir_ok, cont_candle_dir_ok;
+-     bool      c1Cont;
+-     // Mode
+-     bool      turboAbs, baseAbs, turboCont, baseCont;
+-     int scoreEff, scoreContEff;
+-     // Final validity
+-     bool      absValid, contValid;
+-     int candleDir;
+-     // MacroContext filter results (telemetria)
+-     bool      macroAbsCompatible, macroContCompatible;
+-};
++
++
++
++
++
+ 
+ // ENTRY_TYPES_BEGIN
+ enum ENTRY_PHASE
+@@ -329,12 +165,9 @@
+   string mode;
+   double lots;
+   string route;
+-  double breakoutEffortMin;
+   datetime armedAt;
+-    bool sameSideGlassLogged;
+     // Snapshot para auditoria
+     double posRel, distD1, effort, vwapVig;
+-    int c1, c2, c3, c4, c5, scoreEff;
+     // FAR identity/evidence only: no financial journal fields.
+     ulong farArmedMsc,farSignalSequence,farSignalBarMsc;
+     ulong farContextStartMsc,farContextEndExclusiveMsc;
+@@ -490,11 +323,7 @@
+      int tradeRecordIdx;
+ };
+ 
+-struct PerfStat
+-{
+-   long count;
+-   double sumUs, maxUs;
+-};
++
+ 
+ //=====================================================================
+ // GLOBAL VARIABLES
+@@ -514,7 +343,6 @@
+ 
+ // Parâmetros resolvidos no OnInit (família-específicos)
+ int gMagicCore = 0;
+-double gC2 = 0, gC3Min = 0, gC3Max = 0;
+ int gMaxDeviationPts = 0;
+ double gSpreadMaxPts = 5.0;
+ double gBreakoutMargin = 5.0;
+@@ -522,42 +350,10 @@
+ double gSL_Pts      = 150.0;
+ double gTP_Pts      = 300.0;
+ double gABS_MinDisplPts = 60.0;
+-double gABS_MaxBodyPts = 60.0;
+ double gCONT_MinDisplPts= 50.0;
+ 
+-// D-1
+-double H1 = 0.0, L1 = 0.0, VWAP_D1 = 0.0, SigmaD1 = 0.0;
+-bool VWAP_D1_Official = false;
+-bool d1Ready = false;
+-datetime nextD1Retry = 0;
+-
+-// VWAP vigente (incremental acumulador diário)
+-double vwapSumPV = 0.0, vwapSumVol = 0.0;
+-ulong vwapNextFromMsc = 0;
+-bool vwapReady = false;
+-int vwapDayKey = -1;
+-double gVwapValue = 0.0;
+-bool gVwapOk = false;
+-// Weis Wave cache M1
+-bool wwValid = false;
+-bool wwUseReal        = false;
+-int wwDirClosed = 0;
+-double wwAccumClosed = 0.0;
+-double wwAvgClosed          = 0.0;
+-double wwAvgIfFlip = 0.0;
+-double wwCloseRef        = 0.0;
+-double wwEffortClosed = 0.0;
+-int wwWaveDirClosed = 0;
+-int wwCurrentWaveBars= 0; // telemetria WW_WAVE_BARS
+-double wwWaveStartPrice = 0.0; // para WW_DISTANCE_PTS
+ // Temporal
+-datetime lastContextBarTime = 0; // M3
+-datetime lastSignalBarTime = 0; // M1
+ datetime gLastMatrixEvalBar = 0; // anti-duplo
+-datetime gLastReadOnlyMatrixBar = 0; // Diagnostic attempts never consume the entry clock.
+-
+-// MacroContext (M3)
+-MacroContext gMacro;
+ 
+ // Armed
+ ArmedSignal armed;
+@@ -631,35 +427,19 @@
+ bool eodStuckLogged = false;
+ datetime eodNextTry = 0;
+ 
+-// Bandas cache
+-double UpperBand1 = 0.0, LowerBand1 = 0.0;
+-// CSV handles
+-int csvAuditHandle = INVALID_HANDLE;
++// The financial CSV handle/schema and exact accounting state remain original.
+ int csvTradeHandle = INVALID_HANDLE;
+-int csvShadowHandle = INVALID_HANDLE;
+-
+-// Performance telemetry (contagem de execução)
+-PerfStat perfMacro, perfMicro, perfStage2;
+-long gLastPerfLoggedMicroCount = 0;
+-int hardFlipsPerDay = 0, armedCancelHard = 0, oppositeRearmAfterHard = 0;
+-double gLastBreakoutPrice = 0.0;
+-bool gLateMismatchLogged = false, gSpreadHoldLogged = false;
+-MatrixSnapshot gCachedMicroSnapshot;
+-datetime gCachedMicroBar = 0;
+-bool gCachedMicroReady = false;
+-
++// Closed-bar clocks are analytical only; no historical bar may arm on attach.
++double gLastBreakoutPrice=0;
++// Retired analytical counters kept at zero for the unchanged financial CSV schema.
++int hardFlipsPerDay=0,armedCancelHard=0,oppositeRearmAfterHard=0;
++// FAR identity is the current signal-bar clock; never a directional filter.
++datetime gCachedMicroBar=0;
+ // Flush periódico (evitar por tick)
+ datetime gLastFlushTime = 0;
+ 
+ //=====================================================================
+ // RC1 telemetry. No decision gates, CopyTicks, Print or tick flushing here.
+-MatrixSnapshot gLastTelemetryMatrix;
+-bool gLastTelemetryMatrixValid = false;
+-datetime gLastTelemetrySignalBar = 0;
+-bool gLiveDirectionTelemetryValid = false;
+-int gLiveDirAbs = 0;
+-int gLiveDirCont = 0;
+-bool gLateDirectionMismatch = false;
+ ulong gTradeCsvWrittenPIDs[];
+ bool gTradeCsvIndexLoaded = false;
+ bool gTradeCsvAppendSafe = false;
+@@ -668,7 +448,13 @@
+ // HELPER FUNCTIONS
+ //=====================================================================
+ //=====================================================================
+-// SCALPER 1995 FAR — audit-only evidence; no changes to matrix or finance.
++#include "include/ObjectiveMatrix.mqh"
++OMThesis gObjectiveArmed;
++datetime gObjectiveAttachBar=0;
++datetime gFinancialTimerDue=0;
++datetime gObjectiveObservedBar=0;
++
++// SCALPER 1995 FAR — the protection predicates below are retained.
+ // A successful tick-history read is evidence from this feed only, not proof
+ // of market-wide completeness or perfect aggressor classification.
+ // All intervals are [start,endExclusive); COPY_TICKS_TRADE ends at end-1.
+@@ -867,6 +653,10 @@
+       armed.farArmedMsc==0 || endExclusive<=armed.farArmedMsc ||
+       armed.farSignalBarMsc==0 || (armed.dir!=1 && armed.dir!=-1) ||
+       (armed.route!="ABS" && armed.route!="CONT")) return;
++   if(!armed.entry.enabled || !armed.entry.triggerReady ||
++      !FARPriceValid(armed.regionHigh) || !FARPriceValid(armed.regionLow) ||
++      armed.regionHigh<armed.regionLow)
++   { gFARReason="FAR_STRUCTURE_UNAVAILABLE"; return; }
+    ulong span=(ulong)PeriodSeconds(Inp_SignalTF)*1000;
+    if(span==0 || endExclusive<=span) return;
+    ulong start=endExclusive-span;
+@@ -895,7 +685,7 @@
+    double directional=armed.dir*(gFARCurrent.last-gFARCurrent.first);
+    double supportPct=FARPct(armed.dir==1?gFARCurrent.buy:gFARCurrent.sell,
+       gFARCurrent.buy+gFARCurrent.sell+gFARCurrent.unknown);
+-   double trigger=ComputeTrigger(armed.dir,armed.regionHigh,armed.regionLow);
++   double trigger=armed.entry.trigger;
+    bool originalBreakout=armed.dir==1?gFARCurrent.last>=trigger:gFARCurrent.last<=trigger;
+    if(armed.route=="CONT" && supportPct>=Inp_AggressionThresholdPct &&
+       directional>=gCONT_MinDisplPts && originalBreakout)
+@@ -989,19 +779,8 @@
+    CsvAdd(line,(string)gFARLastUs); CsvAdd(line,(string)gFARCalls);
+    CsvAdd(line,(string)gFARSumUs); CsvAdd(line,(string)gFARMaxUs);
+ }
+-bool FARAuditSchemaCompatible()
+-{
+-   if(csvAuditHandle==INVALID_HANDLE) return false;
+-   string expected="TIMESTAMP,STATUS";
+-   CsvConfigHeader(expected); CsvMacroHeader(expected); CsvMatrixHeader(expected);
+-   CsvArmedHeader(expected); CsvExecutionHeader(expected); FARHeader(expected);
+-   FileSeek(csvAuditHandle,0,SEEK_SET);
+-   string actual=FileReadString(csvAuditHandle);
+-   StringTrimRight(actual);
+-   return actual==expected;
+-}
+-
+-PerfStat perfPOC; // cost of the original 300-second POC queries
++
++
+ 
+ // ENTRY_DIAGNOSTICS_BEGIN
+ // Separate experimental diagnostic stream. Never reads/writes a financial
+@@ -1029,10 +808,8 @@
+ 
+ void EntryDiagnosticHeader()
+ {
+-   string names="ENTRY_SCHEMA,BUILD_ID,BASELINE_SHA,EVENT,SIGNAL_ID,ACCOUNT_INSTANCE,SYMBOL,MAGIC,ROUTE,DIRECTION,MODE,ABS_TRIGGER_MODE,CONT_PULLBACK_ENABLED,THESIS_TIME_MSC,THESIS_SNAPSHOT_CLOSE,REFERENCE_SOURCE,REFERENCE_PRICE,BREAKOUT_MARGIN,PREVIOUS_BAR_TIME,PREVIOUS_HIGH,PREVIOUS_LOW,ZONE_FRACTION,ZONE_LOW,ZONE_HIGH,PULLBACK_TIME_MSC,PULLBACK_TRADE_PRICE,TRIGGER_PRICE,LEGACY_TRIGGER_PRICE,CONFIRMATION_TRADE_TIME_MSC,CONFIRMATION_LAST,DISPATCH_QUOTE_TIME_MSC,DISPATCH_ASK,DISPATCH_BID,REQUEST_PRICE,REQUEST_ID,FILL_DEAL_ID,FILL_ORDER_ID,FILL_PRICE,FILL_VOLUME,FILL_TIME_MSC,DISTANCE_REFERENCE_TO_TRIGGER,DISTANCE_THESIS_TO_FILL,FAR_MODE,FAR_STATE,READINESS_STATE,BLOCK_REASON,ARMED_AT,ARMED_TIMEOUT_SEC,DISPATCH_ATTEMPTED";
+-   string columns[],line="";
+-   int count=StringSplit(names,',',columns);
+-   for(int i=0;i<count;i++) CsvAdd(line,columns[i]);
++   string line="ENTRY_SCHEMA,EVENT,SIGNAL_ID,SYMBOL,MAGIC,ROUTE,DIRECTION,MODE,THESIS_MSC,SIGNAL_CLOSE,TRIGGER,CONFIRMATION_MSC,CONFIRMATION_LAST,DISPATCH_MSC,ASK,BID,REQUEST_PRICE,ORDER_ID,DEAL_ID,FILL_PRICE,FILL_VOLUME,FILL_MSC,REASON,ARMED_AT,TIMEOUT_SEC,DISPATCH_ATTEMPTED,REQUEST_ID,RETCODE,TRIGGER_DELAY_MSC,QUOTE_DELAY_MSC,QUOTE_TO_FILL_MSC,OBSERVATION_CLOCK";
++   FARHeader(line);
+    FileWriteString(gEntryDiagnosticHandle,line+"\r\n");
+ }
+ 
+@@ -1046,7 +823,7 @@
+    gEntrySignalSequence=0;
+    ArrayResize(gEntryDispatchDiagnostics,0); ArrayResize(gEntryObservedDeals,0);
+    ArrayResize(gEntryCandidateDeals,0);
+-   string base="Scalper1995_EntryDiag_v2_"+gEntryInstanceID;
++   string base="RemoraObjective_EntryDiag_v1_"+gEntryInstanceID;
+    int collision=0;
+    gEntryDiagnosticFile=base+".csv";
+    while(FileIsExist(gEntryDiagnosticFile))
+@@ -1080,68 +857,56 @@
+                          ulong order=0)
+ {
+    if(gEntryDiagnosticHandle==INVALID_HANDLE) return;
+-   bool actualFill=deal>0 && MathIsValidNumber(fillPrice) && fillPrice>0 &&
++   bool fill=deal>0 && MathIsValidNumber(fillPrice) && fillPrice>0 &&
+       MathIsValidNumber(fillVolume) && fillVolume>0 && fillMsc>0;
+-   bool isNew=s.entry.enabled;
+-   double reference=s.entry.signalReferencePrice;
+-   bool referenceReady=isNew;
+-   string source=(isNew || s.route=="CONT")?"SIGNAL_CLOSED_BAR":"LEGACY_REGION";
++   string clock="TRANSITION";
++   if(event=="DISPATCH_RESULT_BOUND") clock="OBSERVED_AFTER_API_AND_FINANCIAL_COMPLETION";
++   if(event=="FILL_CONFIRMED" && fill) event="DEAL_CONFIRMED";
+    string line="";
+-   CsvAdd(line,"ENTRY1995_2"); CsvAdd(line,"1995_SIGNAL_CLOSE_2");
+-   CsvAdd(line,"ea51a2a4ffd5a11a1d60df1f0e195e360b3987d9");
+-   CsvAdd(line,event); CsvAdd(line,s.signalID); CsvAdd(line,gEntryInstanceID);
+-   CsvAdd(line,Symbol()); CsvAdd(line,(string)gMagicCore);
++   CsvAdd(line,"OBJECTIVE_ENTRY_1"); CsvAdd(line,event);
++   CsvAdd(line,s.signalID); CsvAdd(line,Symbol()); CsvAdd(line,(string)gMagicCore);
+    CsvAdd(line,s.route); CsvAdd(line,DirStr(s.dir)); CsvAdd(line,s.mode);
+-   CsvAdd(line,EnumToString(Inp_ABSTriggerReference));
+-   CsvAdd(line,"0"); // retired CONT_PULLBACK_ENABLED column; schema preserved
+-   CsvAdd(line,s.entry.thesisMsc>0?(string)s.entry.thesisMsc:"");
+-   CsvAdd(line,s.entry.signalReferencePrice>0?CsvD(s.entry.signalReferencePrice):"");
+-   CsvAdd(line,source); CsvAdd(line,referenceReady?CsvD(reference):"");
+-   CsvAdd(line,CsvD(isNew?s.entry.margin:gBreakoutMargin));
+-   // Retired geometry/pullback columns remain empty for schema compatibility.
+-   CsvAdd(line,""); // PREVIOUS_BAR_TIME
+-   CsvAdd(line,""); // PREVIOUS_HIGH
+-   CsvAdd(line,""); // PREVIOUS_LOW
+-   CsvAdd(line,""); // ZONE_FRACTION
+-   CsvAdd(line,""); // ZONE_LOW
+-   CsvAdd(line,""); // ZONE_HIGH
+-   CsvAdd(line,""); // PULLBACK_TIME_MSC
+-   CsvAdd(line,""); // PULLBACK_TRADE_PRICE
+-   CsvAdd(line,isNew?(s.entry.triggerReady?CsvD(s.entry.trigger):""):
+-      (s.route=="CONT"?"":CsvD(ComputeTrigger(s.dir,s.regionHigh,s.regionLow))));
+-   CsvAdd(line,(s.dir==1 || s.dir==-1)?CsvD(ComputeTrigger(s.dir,s.regionHigh,s.regionLow)):"");
+-   CsvAdd(line,s.entry.confirmationMsc>0?(string)s.entry.confirmationMsc:"");
+-   CsvAdd(line,s.entry.confirmationMsc>0?CsvD(s.entry.confirmationPrice):"");
+-   CsvAdd(line,s.dispatchQuoteMsc>0?(string)s.dispatchQuoteMsc:"");
+-   CsvAdd(line,s.dispatchQuoteMsc>0?CsvD(s.dispatchAsk):"");
+-   CsvAdd(line,s.dispatchQuoteMsc>0?CsvD(s.dispatchBid):"");
+-   CsvAdd(line,s.requestPrice>0?CsvD(s.requestPrice):"");
++   CsvAdd(line,(string)s.entry.thesisMsc); CsvAdd(line,CsvD(s.entry.signalReferencePrice));
++   CsvAdd(line,CsvD(s.entry.trigger)); CsvAdd(line,(string)s.entry.confirmationMsc);
++   CsvAdd(line,CsvD(s.entry.confirmationPrice)); CsvAdd(line,(string)s.dispatchQuoteMsc);
++   CsvAdd(line,CsvD(s.dispatchAsk)); CsvAdd(line,CsvD(s.dispatchBid));
++   CsvAdd(line,CsvD(s.requestPrice)); CsvAdd(line,order>0?(string)order:"");
++   CsvAdd(line,fill?(string)deal:""); CsvAdd(line,fill?CsvD(fillPrice):"");
++   CsvAdd(line,fill?CsvD(fillVolume):""); CsvAdd(line,fill?(string)fillMsc:"");
++   CsvAdd(line,s.entryReason); CsvAdd(line,CsvTime(s.armedAt));
++   CsvAdd(line,(string)Inp_ArmedTimeoutSec); CsvAdd(line,BStr(s.entry.dispatchAttempted));
+    uint requestID=0;
+    for(int i=0;i<ArraySize(gEntryDispatchDiagnostics);i++)
+       if(gEntryDispatchDiagnostics[i].signal.signalID==s.signalID)
+       { requestID=gEntryDispatchDiagnostics[i].requestID; break; }
+    CsvAdd(line,requestID>0?(string)requestID:"");
+-   CsvAdd(line,actualFill?(string)deal:""); CsvAdd(line,order>0?(string)order:"");
+-   CsvAdd(line,actualFill?CsvD(fillPrice):"");
+-   CsvAdd(line,actualFill?CsvD(fillVolume):"");
+-   CsvAdd(line,actualFill?(string)fillMsc:"");
+-   CsvAdd(line,referenceReady && s.entry.triggerReady?CsvD(s.dir*(s.entry.trigger-reference)):"");
+-   CsvAdd(line,actualFill && s.entry.signalReferencePrice>0?
+-      CsvD(s.dir*(fillPrice-s.entry.signalReferencePrice)):"");
+-   CsvAdd(line,EnumToString(Inp_AggressionFilterMode));
+-   // FAR evidence belongs only to the currently active matching cycle.
+-   // A delayed fill must not borrow another signal's FAR state.
+-   CsvAdd(line,armed.active && armed.signalID==s.signalID && gFAREvidence?
+-      EnumToString(gFARState):"");
+-   CsvAdd(line,isNew?EnumToString(s.entry.phase):"LEGACY");
+-   CsvAdd(line,s.entryReason); CsvAdd(line,CsvTime(s.armedAt));
+-   CsvAdd(line,(string)Inp_ArmedTimeoutSec); CsvAdd(line,BStr(s.entry.dispatchAttempted));
+-   string payload=line+"\r\n";
+-   ResetLastError(); uint written=FileWriteString(gEntryDiagnosticHandle,payload);
+-   if(written!=(uint)StringLen(payload) || GetLastError()!=0)
+-      Print("[Scalper 1995][ENTRY_DIAGNOSTICS_WRITE_FAILED] Entry diagnostic row could not be confirmed.");
+-   // Rows are emitted only at transitions/dispatch/fill, never every idle tick.
+-   FileFlush(gEntryDiagnosticHandle);
++   bool apiResult=event=="DISPATCH_RESULT_BOUND" || event=="REQUEST_ACCEPTED" || event=="ORDER_FAILED";
++   CsvAdd(line,apiResult?(string)trade.ResultRetcode():
++      (StringFind(event,"REQUEST_RESULT_")==0?StringSubstr(event,15):""));
++   CsvAdd(line,s.entry.confirmationMsc>s.entry.thesisMsc?
++      (string)(s.entry.confirmationMsc-s.entry.thesisMsc):"");
++   CsvAdd(line,s.dispatchQuoteMsc>=s.entry.confirmationMsc && s.entry.confirmationMsc>0?
++      (string)(s.dispatchQuoteMsc-s.entry.confirmationMsc):"");
++   CsvAdd(line,fill && fillMsc>=s.dispatchQuoteMsc && s.dispatchQuoteMsc>0?
++      (string)(fillMsc-s.dispatchQuoteMsc):"");
++   CsvAdd(line,clock);
++   if(armed.active && armed.signalID==s.signalID) FARRow(line);
++   else
++   {
++      string header="",columns[]; FARHeader(header);
++      int count=StringSplit(header,',',columns);
++      for(int i=0;i<count;i++) CsvAdd(line,"");
++   }
++   if(event=="DISPATCH_RESULT_BOUND")
++   {
++      // PositionOpen was actually invoked before this original callback. This
++      // retrospective record adds no IO between the durable barrier and send.
++      string attempt=line;
++      StringReplace(attempt,",DISPATCH_RESULT_BOUND,",",SEND_ATTEMPT,");
++      FileWriteString(gEntryDiagnosticHandle,attempt+"\r\n");
++   }
++   FileWriteString(gEntryDiagnosticHandle,line+"\r\n");
++   // Bounded timer flush; no flush per trade or tick.
+ }
+ 
+ int RememberEntryDispatch()
+@@ -1293,48 +1058,12 @@
+ string DirStr(int d) { return d==1 ? "BUY" : (d==-1 ? "SELL" : "NONE"); }
+ string BStr(bool b) { return b ? "1" : "0"; }
+ 
+-string PocStateStr(ENUM_POC_STATE st)
+-{
+-  switch(st)
+-  {
+-    case POCS_NO_DISPLACEMENT: return "POC_NO_DISPLACEMENT";
+-    case POCS_FOLLOWING:            return "POC_FOLLOWING";
+-    case POCS_DIVERGENT:           return "POC_DIVERGENT";
+-    default: return "POC_INVALID";
+-  }
+-}
+-string MacroStatusStr(ENUM_MACRO_STATUS st)
+-{
+-  switch(st)
+-  {
+-     case MACRO_OK:        return "MACRO_OK";
+-     case MACRO_VWAP_INVALID: return "MACRO_VWAP_INVALID";
+-     case MACRO_SIGMA_INVALID: return "MACRO_SIGMA_INVALID";
+-     case MACRO_STRUCT_INVALID: return "MACRO_STRUCT_INVALID";
+-     case MACRO_NO_TRIGGER: return "MACRO_NO_TRIGGER";
+-     default: return "MACRO_NOT_COMPUTED";
+-    }
+-}
+-
+-string MssStr(ENUM_MSS st)
+-{
+-  switch(st)
+-  {
+-    case MSS_OK:        return "OK";
+-    case MSS_MACRO_INVALID:             return "MACRO_INVALID";
+-    case MSS_VWAP_D1_INVALID:              return "VWAP_D1_INVALID";
+-    case MSS_SIGMA_INVALID:          return "SIGMA_INVALID";
+-    case MSS_STRUCT_INVALID:            return "STRUCT_INVALID";
+-    case MSS_STOP_KAMIKAZE_CONT_ONLY: return "KAMIKAZE_CONT_ONLY";
+-    case MSS_STOP_NO_C5_TRIGGER:                    return "NO_C5_TRIGGER";
+-    default: return "NOT_COMPUTED";
+-  }
+-}
+-
+-int GetD1SessionEndHHMM()
+-{
+-  return gIsDollarFamily ? D1_SESSION_END_DOLLAR : D1_SESSION_END_INDEX;
+-}
++
++
++
++
++
++
+ double NormPriceDigits(double p)
+ {
+   return NormalizeDouble(p, (int)SymbolInfoInteger(Symbol(), SYMBOL_DIGITS));
+@@ -1441,87 +1170,79 @@
+ double NormEntryTP(int dir, double tp)
+ { return (dir == 1) ? RoundUpTick(tp) : RoundDownTick(tp); }
+ 
+-long TickIndex(double price) { return (long)MathRound(price / gTickSize); }
+-
+-double ComputeTrigger(int dir, double regHigh, double regLow)
+-{
+-  if(dir == 1) return RoundUpTick(regHigh + gBreakoutMargin);
+-  return RoundDownTick(regLow - gBreakoutMargin);
+-}
++
++
++
+ 
+ bool ArmedTriggerReady()
+-{
+-   if(!armed.active || (armed.route=="CONT" && !armed.entry.enabled)) return false;
+-   return !armed.entry.enabled || armed.entry.triggerReady;
+-}
++{ return armed.active && armed.entry.enabled && armed.entry.triggerReady; }
+ double ArmedTriggerPrice()
+-{
+-   if(!ArmedTriggerReady()) return 0; // display only; never a decision sentinel
+-   return armed.entry.enabled?armed.entry.trigger:
+-      ComputeTrigger(armed.dir,armed.regionHigh,armed.regionLow);
+-}
+-string ArmedTriggerCell()
+-{
+-   return ArmedTriggerReady()?CsvD(ArmedTriggerPrice()):"";
+-}
++{ return ArmedTriggerReady()?armed.entry.trigger:0; }
++
+ 
+ // The new modes revalidate the original live filters on the final quote too.
+ // No new threshold, timer or interpretation of FAR is introduced here.
++bool ObjectiveContInsideB3(int dir,double price,const OMBands &bands)
++{
++   if(!bands.ready || !MathIsValidNumber(price) || price<=0 ||
++      !MathIsValidNumber(bands.upper3) || !MathIsValidNumber(bands.lower3)) return false;
++   if(dir==1) return price<bands.upper3;
++   if(dir==-1) return price>bands.lower3;
++   return false;
++}
++
++bool ObjectiveRevalidate(string &reason)
++{
++   reason="THESIS_INDETERMINATE";
++   if(!armed.active || !armed.entry.enabled) return false;
++   int validity=OMRevalidate(gObjectiveArmed,reason);
++   if(validity<0)
++   {
++      WriteAuditRow("THESIS_INVALIDATED_"+reason,DirStr(armed.dir),armed.mode,0,0,0,0,ArmedTriggerPrice());
++      ResetArmedSignal(); return false;
++   }
++   return validity==1;
++}
++
+ bool EntryDispatchGuard(const MqlTick &tk)
+ {
+-   if(!armed.entry.enabled) return armed.route!="CONT";
++   // No strategic cancellation may erase ownership of a financial request.
++   if(!armed.active || !armed.entry.enabled || gAccountingUnresolved ||
++      HasExecutionInFlight() || HasOpenPosition()) return false;
+    string reason;
+-   bool allowed=false;
+    if(EntryTimeoutExpired(armed.armedAt,TimeTradeServer(),Inp_ArmedTimeoutSec))
+-      reason="TIMEOUT_ARMED";
+-   else if(tk.ask-tk.bid>gSpreadMaxPts) reason="HOLD_SPREAD";
++   {
++      WriteAuditRow("TIMEOUT_ARMED",DirStr(armed.dir),armed.mode,0,0,0,0,ArmedTriggerPrice());
++      ResetArmedSignal(); return false;
++   }
++   if(!EntryGridValid(tk.ask) || !EntryGridValid(tk.bid) || tk.ask<tk.bid) return false;
++   if(armed.route=="CONT" &&
++      !ObjectiveContInsideB3(armed.dir,armed.dir==1?tk.ask:tk.bid,gObjectiveArmed.bands))
++   {
++      WriteAuditRow("CONT_EXEC_OUTSIDE_B3",DirStr(armed.dir),armed.mode,tk.last,0,0,0,ArmedTriggerPrice());
++      ResetArmedSignal(); return false;
++   }
++   if(EntryRealTrade(tk) && tk.time_msc>armed.entry.thesisMsc &&
++      (armed.dir==1?tk.last>=armed.entry.trigger:tk.last<=armed.entry.trigger))
++   {
++      double overLast=armed.dir*(tk.last-armed.entry.trigger);
++      double overExec=armed.dir*((armed.dir==1?tk.ask:tk.bid)-armed.entry.trigger);
++      if(MathMax(overLast,overExec)>gMaxOvershoot)
++      { WriteAuditRow("OVERSHOOT_BLOCK",DirStr(armed.dir),armed.mode,tk.last,0,0,0,ArmedTriggerPrice()); ResetArmedSignal(); return false; }
++   }
++   if(tk.last!=gOMLastPrice || !OMLiveReady(tk.time_msc) || !ObjectiveRevalidate(reason)) return false; // unknown continuation is never approval
++   if(tk.ask-tk.bid>gSpreadMaxPts) reason="HOLD_SPREAD";
+    else if(ValidateEntryDispatch(armed.entry,tk,reason))
+    {
+       double overLast=armed.dir*(tk.last-armed.entry.trigger);
+-      double exec=armed.dir==1?tk.ask:tk.bid;
+-      double overExec=armed.dir*(exec-armed.entry.trigger);
+-      double eff,vol,avg; int dir;
+-      if(MathMax(overLast,overExec)>gMaxOvershoot) reason="OVERSHOOT_BLOCK";
+-      else if(!wwValid) reason="LATE_WEIS_UNAVAILABLE";
+-      else
+-      {
+-         ComputeLiveWaveO1(eff,vol,avg,dir);
+-         if(dir!=armed.dir || eff<armed.breakoutEffortMin) reason="LATE_WEIS_BLOCK";
+-         else
+-         {
+-            double vwap=0;
+-            if(!GetLiveVwapSnapshot((ulong)tk.time_msc,vwap)) reason="LATE_VWAP_INVALID";
+-            else
+-            {
+-               double upper=vwap+SigmaD1*gBandMultiplier;
+-               double lower=vwap-SigmaD1*gBandMultiplier;
+-               double range=upper-lower;
+-               if(!MathIsValidNumber(range) || range<=0) reason="LATE_VWAP_INVALID";
+-               else
+-               {
+-                  double rel=(tk.last-lower)/range;
+-                  int liveAbs=0;
+-                  if(rel>=Inp_VWAP_Inner_Pct) liveAbs=-1;
+-                  else if(rel<=1.0-Inp_VWAP_Inner_Pct) liveAbs=1;
+-                  int liveCont=liveAbs==0?0:-liveAbs;
+-                  bool mismatch=(armed.route=="ABS"?liveAbs:liveCont)!=armed.dir;
+-                  bool glass=rel>Inp_VWAP_Outer_Pct || rel<1.0-Inp_VWAP_Outer_Pct;
+-                  bool opposite=(armed.dir==-1 && rel<1.0-Inp_VWAP_Outer_Pct) ||
+-                                (armed.dir==1 && rel>Inp_VWAP_Outer_Pct);
+-                  if(Inp_EnableLateDirectionBlock && mismatch)
+-                     reason="LATE_DIRECTION_BLOCK";
+-                  else if(armed.route=="ABS"?opposite:glass) reason="LATE_GLASS_BLOCK";
+-                  else allowed=true;
+-               }
+-            }
+-         }
+-      }
+-   }
+-   armed.entryReason=reason;
+-   if(!allowed)
+-      WriteAuditRow(reason,DirStr(armed.dir),armed.mode,tk.last,
+-         armed.posRel,armed.distD1,armed.effort,ArmedTriggerPrice());
+-   return allowed;
++      double overExec=armed.dir*((armed.dir==1?tk.ask:tk.bid)-armed.entry.trigger);
++      if(MathMax(overLast,overExec)<=gMaxOvershoot)
++      { armed.entryReason="DISPATCH_GUARD"; return true; }
++      WriteAuditRow("OVERSHOOT_BLOCK",DirStr(armed.dir),armed.mode,tk.last,0,0,0,ArmedTriggerPrice());
++      ResetArmedSignal(); return false;
++   }
++   WriteAuditRow(reason,DirStr(armed.dir),armed.mode,tk.last,0,0,0,ArmedTriggerPrice());
++   return false;
+ }
+ 
+ bool IsFokSupported()
+@@ -1535,90 +1256,22 @@
+   long filling = SymbolInfoInteger(Symbol(), SYMBOL_FILLING_MODE);
+   return ((filling & SYMBOL_FILLING_FOK) == SYMBOL_FILLING_FOK);
+ }
+-void ResetPerfStat(PerfStat &p) { p.count = 0; p.sumUs = 0.0; p.maxUs = 0.0; }
+-void RecordPerf(PerfStat &p, double us)
+-{
+-  p.count++;
+-  p.sumUs += us;
+-  if(us > p.maxUs) p.maxUs = us;
+-}
+-
+-void ResetMacroContext(MacroContext &m)
+-{
+-  m.status = MACRO_NOT_COMPUTED;
+-  m.barTime = 0;
+-  m.closedPrice = 0.0;
+-  m.vwap = 0.0;
+-  m.SigmaD1 = 0.0;
+-  m.distVWAP_D1 = 0.0;
+-  m.posRel = 0.0;
+-  m.glass = false;
+-    m.macroAbsDir = 0;
+-    m.macroContDir = 0;
+-}
+-
+-void ResetPOCResult(POCResult &r)
+-{
+-  r.ok = false; r.poc = 0; r.totalVolume = 0; r.lastValidPrice = 0;
+-  r.tradeCount = 0; r.levels = 0; r.hasTie = false;
+-    r.top1Price = 0; r.top1Vol = 0; r.top2Price = 0; r.top2Vol = 0;
+-    r.dominance = 0; r.buyVol = 0; r.sellVol = 0; r.unkVol = 0;
+-}
+-
+-void ResetMatrixSnapshot(MatrixSnapshot &s)
+-{
+-  s.status = MSS_NOT_COMPUTED;
+-  s.vwapVig=0;s.upper=0;s.lower=0;s.bandRange=0;
+-  s.price=0;s.open1=0;s.candleBody=0;s.posRel=0;
+-  s.glass=false;s.dir=0;s.dirCont=0;
+-  s.c5AbsOk=false;s.c5ContOk=false;
+-  s.distAbs=0;s.minDispl=0;s.maxBody=0;s.contMinDispl=0;
+-  s.c2=false;s.c3=false;s.c23=false;s.c4=false;
+-  s.c2Cont=false;s.c3Cont=false;s.c23Cont=false;s.c4Cont=false;
+-  s.posRange=0;
+-  ResetPOCResult(s.pocNow);
+-  ResetPOCResult(s.pocPrev);
+-  s.windowsValid=false;
+-  s.priceMove=0;s.pocMove=0;s.displacementOk=false;s.moveDir=0;
+-  s.pocState=POCS_INVALID;
+-  s.contDisplacementOk=false;s.contMoveDir=0;s.contPocState=POCS_INVALID;
+-   s.wwok=false;s.effort=0;s.waveDir=0;
+-    s.wwWaveBars=0; s.wwWaveAgeSec=0; s.wwWaveAgeAvailable=false;
+-    s.wwAccumVolume=0; s.wwDistancePts=0;
+-    s.c1_effort_ok=false;s.c1_body_ok=false;s.c1_displacement_ok=false;
+-    s.c1_movedir_ok=false;s.c1_wavedir_ok=false;
+-    s.absDivergence=false;s.absStallStrict=false;
+-    s.absFollowingReaction=false;s.absFollowingExtension=false;
+-    s.absPocContextOk=false;s.c1=false;
+-    s.cont_effort_ok=false;s.cont_displacement_ok=false;s.cont_poc_ok=false;
+-    s.cont_movedir_ok=false;s.cont_wavedir_ok=false;s.cont_candle_dir_ok=false;
+-    s.c1Cont=false;
+-    s.turboAbs=false;s.baseAbs=false;s.turboCont=false;s.baseCont=false;
+-    s.scoreEff=0;s.scoreContEff=0;
+-    s.absValid=false;s.contValid=false;
+-    s.candleDir=0;
+-    s.macroAbsCompatible=false;s.macroContCompatible=false;
+-}
++
++
++
++
++
++
++
++
+ 
+ void ResetArmedSignal()
+ {
+-    if(armed.active && armed.signalID!="") WriteEntryDiagnostic(armed,"SIGNAL_END");
+-    armed.active=false;armed.dir=0;
+-    armed.regionHigh=0;armed.regionLow=0;
+-    armed.activeSL_Pts=0;armed.activeTP_Pts=0;
+-    armed.regionEndTime=0;
+-    armed.mode="NONE";armed.lots=0;armed.route="NONE";
+-    armed.breakoutEffortMin=0;armed.armedAt=0;
+-    armed.sameSideGlassLogged=false;
+-    armed.posRel=0;armed.distD1=0;armed.effort=0;armed.vwapVig=0;
+-    armed.c1=0;armed.c2=0;armed.c3=0;armed.c4=0;armed.c5=0;armed.scoreEff=0;
+-    armed.farArmedMsc=0; armed.farSignalSequence=0; armed.farSignalBarMsc=0;
+-    armed.farContextStartMsc=0; armed.farContextEndExclusiveMsc=0;
+-    armed.farArmPrice=0; armed.farArmPriceValid=false;
+-    ZeroMemory(armed.entry);
+-    armed.signalID=""; armed.entryReason="";
+-    armed.dispatchQuoteMsc=0; armed.dispatchAsk=0; armed.dispatchBid=0; armed.requestPrice=0;
+-    FARClearEvidence();
++   if(armed.active && armed.signalID!="") WriteEntryDiagnostic(armed,"SIGNAL_END");
++   ZeroMemory(armed);
++   armed.mode="NONE"; armed.route="NONE";
++   ZeroMemory(gObjectiveArmed);
++   FARClearEvidence();
+ }
+ 
+ void ResetOpenPos()
+@@ -1642,694 +1295,7 @@
+     return copied;
+ }
+ 
+-//=====================================================================
+-// VWAP INCREMENTAL (from v2.44 — lógica idêntica, prefixo SCALPER)
+-//=====================================================================
+-void ResetVwapCache()
+-{
+-   vwapSumPV=0;vwapSumVol=0;vwapNextFromMsc=0;
+-   vwapReady=false;vwapDayKey=-1;gVwapValue=0;gVwapOk=false;
+-}
+-
+-bool UpdateVwapIncremental(datetime t0)
+-{
+-  MqlDateTime d; TimeToStruct(t0, d);
+-  int key = d.year*1000 + d.day_of_year;
+-  if(key != vwapDayKey)
+-  {
+-vwapSumPV=0;vwapSumVol=0;vwapNextFromMsc=0;vwapReady=false;vwapDayKey=key;
+- }
+- ulong t0_msc = (ulong)t0 * 1000;
+- if(!vwapReady)
+- {
+-     d.hour=0;d.min=0;d.sec=0;
+-     datetime dayStart = StructToTime(d);
+-      ulong from = (ulong)dayStart * 1000;
+-      if(t0_msc <= from) {
+-vwapSumPV=0;vwapSumVol=0;vwapReady=false;vwapNextFromMsc=0; return false; }
+-      ulong to = t0_msc - 1;
+-      MqlTick tk[];
+-      int copied = CopyTradeTicksStrict(from, to, tk);
+-      if(copied <= 0) {
+-vwapSumPV=0;vwapSumVol=0;vwapReady=false;vwapNextFromMsc=0; return false; }
+-      double pv=0,vv=0; bool any=false;
+-      for(int i=0;i<copied;i++)
+-          if(tk[i].last>0&&tk[i].volume>0){ pv+=tk[i].last*(double)tk[i].volume;
+-vv+=(double)tk[i].volume; any=true; }
+-      if(!any||vv<=0) {
+-vwapSumPV=0;vwapSumVol=0;vwapReady=false;vwapNextFromMsc=0; return false; }
+-      vwapSumPV=pv;vwapSumVol=vv;vwapReady=true;vwapNextFromMsc=t0_msc;
+-      return true;
+-  }
+-  if(vwapNextFromMsc >= t0_msc) return (vwapSumVol > 0.0);
+-  ulong from = vwapNextFromMsc;
+-  ulong to = t0_msc - 1;
+-  MqlTick tk[];
+-  int copied = CopyTradeTicksStrict(from, to, tk);
+-  if(copied < 0) return false;
+-  if(copied == 0) { vwapNextFromMsc=t0_msc; return (vwapSumVol>0.0); }
+-  double pv=0,vv=0;
+-  for(int i=0;i<copied;i++)
+-      if(tk[i].last>0&&tk[i].volume>0){ pv+=tk[i].last*(double)tk[i].volume;
+-vv+=(double)tk[i].volume; }
+-  vwapSumPV+=pv;vwapSumVol+=vv;vwapNextFromMsc=t0_msc;
+-  return (vwapSumVol > 0.0);
+-}
+-
+-bool GetLiveVwapSnapshot(ulong to_msc, double &liveVwap)
+-{
+-  liveVwap = 0.0;
+-  if(!vwapReady || vwapSumVol <= 0.0 || vwapNextFromMsc == 0) return false;
+-  double localPV = vwapSumPV, localVol = vwapSumVol;
+-  if(to_msc >= vwapNextFromMsc)
+-  {
+-      MqlTick ticks[];
+-      int copied = CopyTradeTicksStrict(vwapNextFromMsc, to_msc, ticks);
+-      if(copied <= 0) return false;
+-      for(int i=0;i<copied;i++)
+-          if(ticks[i].last>0&&ticks[i].volume>0)
+-          { localPV+=ticks[i].last*(double)ticks[i].volume; localVol+=(double)ticks[i].volume; }
+-    }
+-    if(localVol <= 0.0) return false;
+-    liveVwap = localPV / localVol;
+-      return liveVwap > 0.0;
+-}
+-
+-//=====================================================================
+-// POC M1 COM DETECÇÃO DE EMPATE
+-// Preserva o princípio do ComputePOCWindow da 2.44.
+-// Tie is telemetry; canonical ascending scan keeps first maximum without a new tie rule.
+-//=====================================================================
+-bool ComputePOCWithTieCore(ulong from_msc, ulong to_msc, POCResult &res)
+-{
+-   ResetPOCResult(res);
+-   if(to_msc < from_msc) return false;
+-
+-  MqlTick t[];
+-  int copied = CopyTradeTicksStrict(from_msc, to_msc, t);
+-  if(copied < 0) return false;
+-  if(copied == 0) return false;
+-double ts = SymbolInfoDouble(Symbol(), SYMBOL_TRADE_TICK_SIZE);
+-if(ts <= 0.0) ts = SymbolInfoDouble(Symbol(), SYMBOL_POINT);
+-if(ts <= 0.0) return false;
+-
+-double pmin=DBL_MAX, pmax=-DBL_MAX; bool any=false;
+-for(int i=0;i<copied;i++)
+-{
+-    if(t[i].last>0.0 && t[i].volume>0)
+-    {
+-        any=true;
+-        if(t[i].last < pmin) pmin=t[i].last;
+-        if(t[i].last > pmax) pmax=t[i].last;
+-        res.lastValidPrice=t[i].last;
+-        res.tradeCount++;
+-        double v=(double)t[i].volume;
+-        bool fb=((t[i].flags & TICK_FLAG_BUY) != 0);
+-        bool fs=((t[i].flags & TICK_FLAG_SELL) != 0);
+-        if(fb && !fs) res.buyVol += v;
+-        else if(fs && !fb) res.sellVol += v;
+-        else            res.unkVol += v;
+-    }
+-}
+-if(!any || pmax < pmin) return false;
+-long levelsL = (long)MathRound((pmax-pmin)/ts) + 1;
+-if(levelsL < 1 || levelsL > 100000) return false;
+-int levCount = (int)levelsL;
+-
+-double vol[];
+-ArrayResize(vol, levCount);
+-ArrayInitialize(vol, 0.0);
+-for(int i=0;i<copied;i++)
+-{
+-    if(t[i].last>0.0 && t[i].volume>0)
+-    {
+-        int idx=(int)MathRound((t[i].last-pmin)/ts);
+-        if(idx<0||idx>=levCount) continue;
+-        vol[idx]+=(double)t[i].volume;
+-        res.totalVolume+=(double)t[i].volume;
+-    }
+-}
+-if(res.totalVolume <= 0.0) return false;
+-
+-// Encontrar top1 e top2 separadamente (sem colapso silencioso de empate)
+-int best=-1, second=-1; double bestV=-1.0, secondV=-1.0; int nz=0;
+-for(int i=0;i<levCount;i++)
+-{
+-    if(vol[i] > 0.0) nz++;
+-    if(vol[i] > bestV) { bestV=vol[i]; best=i; }
+-  }
+-  for(int i=0;i<levCount;i++)
+-  {
+-      if(i==best) continue;
+-   if(vol[i] > 0.0 && vol[i] > secondV) { secondV=vol[i]; second=i; }
+- }
+- if(best < 0) return false;
+-
+-res.levels = nz;
+-res.poc = pmin + best*ts;
+-res.top1Price = res.poc;
+-res.top1Vol = bestV;
+-if(second >= 0)
+-{
+-    res.top2Price = pmin + second*ts;
+-    res.top2Vol = secondV;
+-    // Canonical diagnostic: exactly equal executed volumes
+-    res.hasTie = (secondV == bestV);
+-}
+-else { res.top2Price=0; res.top2Vol=0; res.hasTie=false; }
+-
+- res.dominance = (res.totalVolume>0 && second>=0) ?
+-(res.top1Vol-res.top2Vol)/res.totalVolume : 0.0;
+-  res.ok = true;
+-  return true;
+-}
+-
+-//=====================================================================
+-// WEIS WAVE M1
+-// Lógica operacional idêntica à v2.44.
+-// Adaptado: usa Inp_SignalTF (PERIOD_M1) em vez de Inp_Timeframe.
+-// Adicionado: wwCurrentWaveBars e wwWaveStartPrice (telemetria apenas).
+-//=====================================================================
+-// Timing wrapper only; POC core and requested windows are unchanged.
+-bool ComputePOCWithTie(ulong from_msc,ulong to_msc,POCResult &res)
+-{
+-   ulong begin=GetMicrosecondCount();
+-   bool ok=ComputePOCWithTieCore(from_msc,to_msc,res);
+-   RecordPerf(perfPOC,(double)(GetMicrosecondCount()-begin));
+-   return ok;
+-}
+-
+-void RebuildWeisCache()
+-{
+-   wwValid=false;
+-   int need=150;
+-   double close[]; long rvol[],tvol[];
+-   ArraySetAsSeries(close,true);
+-   ArraySetAsSeries(rvol,true);
+-   ArraySetAsSeries(tvol,true);
+-   int n=CopyClose(Symbol(),Inp_SignalTF,0,need,close);
+-   if(n<12) return;
+-   bool useReal=(CopyRealVolume(Symbol(),Inp_SignalTF,0,need,rvol)==n);
+-    if(!useReal && CopyTickVolume(Symbol(),Inp_SignalTF,0,need,tvol)!=n) return;
+-
+-double waves[]; int wc=0;
+-int curDir=0; double accum=0.0;
+-int curWaveBars=0; double curWaveStart=0.0;
+-
+-for(int i=n-2;i>=1;i--)
+-{
+-     int bd=(close[i]>close[i+1])?1:(close[i]<close[i+1]?-1:curDir);
+-     if(bd==0) bd=(curDir==0?1:curDir);
+-     double v=useReal?(double)rvol[i]:(double)tvol[i];
+-     if(curDir==0)
+-     {
+-         curDir=bd; accum=v; curWaveBars=1; curWaveStart=close[i+1];
+-     }
+-     else if(bd==curDir)
+-     {
+-         accum+=v; curWaveBars++;
+-     }
+-     else
+-     {
+-         ArrayResize(waves,wc+1); waves[wc++]=accum;
+-         curDir=bd; accum=v; curWaveBars=1; curWaveStart=close[i+1];
+-     }
+-  }
+-    int cnt=MathMin(10,wc); double s=0.0;
+-    for(int k=wc-1;k>=wc-cnt&&k>=0;k--) s+=waves[k];
+-    double avgClosed=(cnt>0)?s/cnt:0.0;
+-
+-    int cntF=MathMin(10,wc+1); double sF=accum;
+-    for(int k=wc-1;k>=wc-(cntF-1)&&k>=0;k--) sF+=waves[k];
+-    double avgFlip=(cntF>0)?sF/cntF:0.0;
+-      wwUseReal       = useReal;
+-      wwDirClosed = curDir;
+-      wwAccumClosed = accum;
+-      wwAvgClosed = avgClosed;
+-      wwAvgIfFlip = avgFlip;
+-      wwCloseRef = close[1];
+-      wwWaveDirClosed = curDir;
+-      wwEffortClosed = (avgClosed>0.0)?accum/avgClosed:0.0;
+-      wwCurrentWaveBars = curWaveBars; // telemetria
+-      wwWaveStartPrice = curWaveStart; // telemetria
+-      wwValid = true;
+-}
+-
+-// ComputeLiveWaveO1 adaptado para M1 — idêntico à v2.44 mas usa Inp_SignalTF
+-void ComputeLiveWaveO1(double &effort, double &curVol, double &avgVol, int &waveDir)
+-{
+-  double v0 = wwUseReal ?
+-      (double)iRealVolume(Symbol(),Inp_SignalTF,0) :
+-      (double)iVolume(Symbol(),Inp_SignalTF,0);
+-  double c0 = iClose(Symbol(),Inp_SignalTF,0);
+-  int bd0=(c0>wwCloseRef)?1:((c0<wwCloseRef)?-1:wwDirClosed);
+-  if(bd0==0) bd0=wwDirClosed;
+-  if(bd0==wwDirClosed)
+-    { curVol=wwAccumClosed+v0; waveDir=wwDirClosed; avgVol=wwAvgClosed; }
+-    else
+-    { curVol=v0; waveDir=bd0; avgVol=wwAvgIfFlip; }
+-    effort=(avgVol>0.0)?curVol/avgVol:0.0;
+-}
+-
+-//=====================================================================
+-// D-1 LITERAL (from v2.44 — idêntico, prefixo SCALPER nos prints)
+-//=====================================================================
+-void CalcD1Structure()
+-{
+-   H1=0;L1=0;VWAP_D1=0;VWAP_D1_Official=false;
+-   MqlDateTime td; TimeToStruct(TimeTradeServer(),td);
+-   td.hour=0;td.min=0;td.sec=0;
+-   datetime todayStart=StructToTime(td);
+-   datetime d1_0=iTime(Symbol(),PERIOD_D1,0);
+-   if(d1_0<=0) { Print("[SCALPER][D1] iTime D1 shift 0 falhou."); return; }
+-   datetime expected=0;
+-   if(d1_0>=todayStart)
+-   {
+-       expected=iTime(Symbol(),PERIOD_D1,1);
+-       if(expected<=0) { Print("[SCALPER][D1] iTime D1 shift 1 falhou."); return; }
+-   }
+-   else expected=d1_0;
+-   MqlDateTime ed; TimeToStruct(expected,ed);
+-  ed.hour=0;ed.min=0;ed.sec=0;
+-  datetime dayStart=StructToTime(ed);
+-  datetime dayEnd=dayStart+86400-1;
+-  datetime timeBuf[];
+-  int nBars=CopyTime(Symbol(),PERIOD_M1,dayStart,dayEnd,timeBuf);
+-  if(nBars<D1_MIN_M1_BARS)
+-  { PrintFormat("[SCALPER][D1] M1 insuficiente (%d<%d).",nBars,D1_MIN_M1_BARS);
+-return; }
+-  MqlDateTime b0; TimeToStruct(timeBuf[0],b0);
+-  if(b0.year!=ed.year||b0.mon!=ed.mon||b0.day!=ed.day)
+-  { Print("[SCALPER][D1] Data carregada difere."); return; }
+-  double highBuf[],lowBuf[],closeBuf[];
+- if(CopyHigh (Symbol(),PERIOD_M1,dayStart,dayEnd,highBuf )!=nBars) return;
+- if(CopyLow (Symbol(),PERIOD_M1,dayStart,dayEnd,lowBuf )!=nBars) return;
+- if(CopyClose(Symbol(),PERIOD_M1,dayStart,dayEnd,closeBuf)!=nBars) return;
+- long realVol[],tickVol[];
+- bool
+-useRealVol=(CopyRealVolume(Symbol(),PERIOD_M1,dayStart,dayEnd,realVol)==nBars);
+-
+-if(!useRealVol&&CopyTickVolume(Symbol(),PERIOD_M1,dayStart,dayEnd,tickVol)!=nBars)
+-return;
+-    int sessEnd=GetD1SessionEndHHMM();
+-    double dayHigh=0,dayLow=DBL_MAX;
+-    double sumTPVol=0,sumVol=0; int sessBar=0;
+-    for(int i=0;i<nBars;i++)
+-    {
+-        MqlDateTime b; TimeToStruct(timeBuf[i],b);
+-        int h=b.hour*100+b.min;
+-        if(h>=D1_SESSION_START&&h<sessEnd)
+-        {
+-            if(highBuf[i]>dayHigh) dayHigh=highBuf[i];
+-            if(lowBuf[i]<dayLow) dayLow=lowBuf[i];
+-            double tp=(highBuf[i]+lowBuf[i]+closeBuf[i])/3.0;
+-            double vol=useRealVol?(double)realVol[i]:(double)tickVol[i];
+-            if(vol>0){sumTPVol+=tp*vol;sumVol+=vol;}
+-            sessBar++;
+-        }
+-    }
+-    if(dayHigh<=0||dayLow>=DBL_MAX||dayHigh<=dayLow||sessBar==0||sumVol<=0) return;
+-    double dayVWAP=sumTPVol/sumVol;
+-    if(dayVWAP<=0) return;
+-    H1=dayHigh;L1=dayLow;VWAP_D1=dayVWAP;VWAP_D1_Official=true;
+-    PrintFormat("[SCALPER][D1] %s: VWAP=%.4f H1=%.4f L1=%.4f Barras=%d",
+-       TimeToString(dayStart,TIME_DATE),VWAP_D1,H1,L1,nBars);
+-}
+-
+-//=====================================================================
+-// SIGMA HISTÓRICO (from v2.44 — idêntico na lógica)
+-//=====================================================================
+-void CalcSigmaHistory()
+-{
+-  SigmaD1=0;
+-  MqlDateTime todayDT; TimeToStruct(TimeTradeServer(),todayDT);
+-  todayDT.hour=0;todayDT.min=0;todayDT.sec=0;
+-  datetime searchDay=StructToTime(todayDT);
+-  int targetDays=SigmaLookbackDays; // validated, no silent input clamp
+-  double sigmaArray[20]; int validDaysFound=0;
+-  int sessEnd=GetD1SessionEndHHMM();
+-  for(int
+-attempt=0;attempt<MAX_SEARCH_DAYS&&validDaysFound<targetDays;attempt++)
+-  {
+-    searchDay-=86400;
+-    MqlDateTime sdt; TimeToStruct(searchDay,sdt);
+-    if(sdt.day_of_week==0||sdt.day_of_week==6) continue;
+-    sdt.hour=0;sdt.min=0;sdt.sec=0;
+-    datetime dayStart=StructToTime(sdt);
+-    datetime dayEnd=dayStart+86400-1;
+-    datetime timeBuf[];
+-    int nBars=CopyTime(Symbol(),PERIOD_M1,dayStart,dayEnd,timeBuf);
+-    if(nBars<D1_MIN_M1_BARS) continue;
+-    double highBuf[],lowBuf[],closeBuf[];
+-   if(CopyHigh(Symbol(),PERIOD_M1,dayStart,dayEnd,highBuf)!=nBars) continue;
+-   if(CopyLow (Symbol(),PERIOD_M1,dayStart,dayEnd,lowBuf )!=nBars) continue;
+-   double dayHigh=0,dayLow=DBL_MAX; int sessBar=0;
+-   for(int i=0;i<nBars;i++)
+-   {
+-       MqlDateTime b; TimeToStruct(timeBuf[i],b);
+-       int h=b.hour*100+b.min;
+-       if(h>=D1_SESSION_START&&h<sessEnd)
+-       { if(highBuf[i]>dayHigh)dayHigh=highBuf[i]; if(lowBuf[i]<dayLow)dayLow=lowBuf[i];
+-sessBar++; }
+-   }
+-   if(dayHigh<=0||dayLow>=DBL_MAX||dayHigh<=dayLow||sessBar==0) continue;
+-   if(CopyClose(Symbol(),PERIOD_M1,dayStart,dayEnd,closeBuf)!=nBars) continue;
+-   long realVol[],tickVol[];
+-   bool
+-useRealVol=(CopyRealVolume(Symbol(),PERIOD_M1,dayStart,dayEnd,realVol)==nBars);
+-   int copiedTV=0;
+-   if(!useRealVol)
+-copiedTV=CopyTickVolume(Symbol(),PERIOD_M1,dayStart,dayEnd,tickVol);
+-   if(!useRealVol&&copiedTV!=nBars) continue;
+-   double sumTPVol=0,sumVol=0;
+-   for(int i=0;i<nBars;i++)
+-   {
+-       MqlDateTime b; TimeToStruct(timeBuf[i],b);
+-       int h=b.hour*100+b.min;
+-    if(h>=D1_SESSION_START&&h<sessEnd)
+-    {
+-        double tp=(highBuf[i]+lowBuf[i]+closeBuf[i])/3.0;
+-        double vol=useRealVol?(double)realVol[i]:(double)tickVol[i];
+-        if(vol>0){sumTPVol+=tp*vol;sumVol+=vol;}
+-    }
+-    }
+-    if(sumVol<=0) continue;
+-    double dayVWAP=sumTPVol/sumVol;
+-    double sumWVar=0,sumVolB=0;
+-  for(int j=0;j<nBars;j++)
+-  {
+-     MqlDateTime b2; TimeToStruct(timeBuf[j],b2);
+-     int h2=b2.hour*100+b2.min;
+-     if(h2>=D1_SESSION_START&&h2<sessEnd)
+-     {
+-         double tp=(highBuf[j]+lowBuf[j]+closeBuf[j])/3.0;
+-         double vol=useRealVol?(double)realVol[j]:(double)tickVol[j];
+-         if(vol>0){double dd=tp-dayVWAP;sumWVar+=vol*dd*dd;sumVolB+=vol;}
+-     }
+-  }
+-  double daySigma=(sumVolB>0)?MathSqrt(sumWVar/sumVolB):0.0;
+-  sigmaArray[validDaysFound++]=daySigma;
+-  }
+-  if(validDaysFound==0) { Print("[SCALPER][SIGMA] CRÍTICO: nenhum dia válido.");
+-return; }
+-  double sumS=0;
+-  for(int k=0;k<validDaysFound;k++) sumS+=sigmaArray[k];
+-  SigmaD1=sumS/(double)validDaysFound;
+-  double pisoSigma=gIsIndexFamily?Inp_SigmaFloor_WIN:Inp_SigmaFloor_WDO;
+-  if(SigmaD1<pisoSigma)
+-  { PrintFormat("[SCALPER] Sigma=%.4f<piso=%.4f. Aplicando piso.",SigmaD1,pisoSigma);
+-SigmaD1=pisoSigma; }
+-  PrintFormat("[SCALPER][SIGMA] SigmaD1=%.4f DiasValidos=%d/%d",SigmaD1,validDaysFound,targetDays);
+-}
+-
+-void TryCalcD1()
+-{
+-  if(!VWAP_D1_Official) CalcD1Structure();
+-  if(SigmaD1<=0.0) CalcSigmaHistory();
+-    d1Ready=(VWAP_D1_Official&&VWAP_D1>0&&SigmaD1>0&&H1>0&&L1>0&&H1>L1);
+-    if(!d1Ready) nextD1Retry=TimeTradeServer()+60;
+-}
+-
+-//=====================================================================
+-// MACRO CONTEXT (M3) — NOVO
+-// Determina regime estrutural. NÃO calcula ABS/CONT completo.
+-// Usa mesma lógica C5 da v2.44 para determinar macroAbsDir/macroContDir.
+-//=====================================================================
+-void ComputeMacroContext()
+-{
+-   datetime contextClock=iTime(Symbol(),Inp_ContextTF,0);
+-   ResetMacroContext(gMacro);
+-   if(VWAP_D1<=0||!VWAP_D1_Official) { gMacro.status=MACRO_VWAP_INVALID; return;
+-}
+-   if(SigmaD1<=0)        { gMacro.status=MACRO_SIGMA_INVALID; return; }
+-    if(!gVwapOk||gVwapValue<=0)        { gMacro.status=MACRO_STRUCT_INVALID; return;
+-}
+-    double closedM3=iClose(Symbol(),Inp_ContextTF,1);
+-    if(closedM3<=0) { gMacro.status=MACRO_STRUCT_INVALID; return; }
+-    gMacro.barTime =iTime(Symbol(),Inp_ContextTF,1);
+-    gMacro.closedPrice=closedM3;
+-    gMacro.vwap      =gVwapValue;
+-    gMacro.SigmaD1 =SigmaD1;
+-    gMacro.distVWAP_D1=MathAbs(closedM3-VWAP_D1);
+-    double upper=gMacro.vwap+SigmaD1*gBandMultiplier;
+-    double lower=gMacro.vwap-SigmaD1*gBandMultiplier;
+-    double range=upper-lower;
+-    if(range<=0) { gMacro.status=MACRO_STRUCT_INVALID; return; }
+-    gMacro.posRel=(closedM3-lower)/range;
+-gMacro.glass=(gMacro.posRel>Inp_VWAP_Outer_Pct)||(gMacro.posRel<(1.0-Inp_VWAP_Outer_Pct));
+-  // C5 idêntico ao da v2.44
+-  gMacro.macroAbsDir=0;
+-  if(gMacro.posRel>=Inp_VWAP_Inner_Pct) gMacro.macroAbsDir=-1;
+-  else if(gMacro.posRel<=(1.0-Inp_VWAP_Inner_Pct)) gMacro.macroAbsDir=1;
+-  gMacro.macroContDir=0;
+-  if(gMacro.posRel>=Inp_VWAP_Inner_Pct) gMacro.macroContDir=1;
+-  else if(gMacro.posRel<=(1.0-Inp_VWAP_Inner_Pct)) gMacro.macroContDir=-1;
+-  if(gMacro.macroAbsDir==0&&gMacro.macroContDir==0)
+-  { gMacro.status=MACRO_NO_TRIGGER; return; }
+-  if(contextClock<=0 || iTime(Symbol(),Inp_ContextTF,0)!=contextClock)
+-  { gMacro.status=MACRO_STRUCT_INVALID; return; }
+-  gMacro.status=MACRO_OK;
+-}
+-
+-//=====================================================================
+-// MATRIX SNAPSHOT M1
+-// Preserva todas as fórmulas da v2.44 (C2/C3/C4/C5/WW/POC/ABS/CONT).
+-// Diferenças chave vs. v2.44:
+-// - usa Inp_SignalTF (M1) para close/open/volume
+-// - displacement e corpo em pts fixos (não sigma-fração)
+-// - DIVERGENCE requires displacement, exactly as canonical v2.44
+-// - POC: janela 60s, com detecção de empate
+-// - filtro MacroContext ao final
+-//=====================================================================
+-ENUM_MSS ComputeMatrixSnapshot(MatrixSnapshot &s)
+-{
+-   ResetMatrixSnapshot(s);
+-
+-  // MacroContext deve ser válido (fail closed se não)
+-  if(Inp_EnableMacroDirectionGate && gMacro.status!=MACRO_OK)
+-  { s.status=MSS_MACRO_INVALID; return s.status; }
+- if(VWAP_D1<=0||!VWAP_D1_Official) { s.status=MSS_VWAP_D1_INVALID; return
+-s.status; }
+- if(SigmaD1<=0)     { s.status=MSS_SIGMA_INVALID; return s.status; }
+- if(H1<=0||L1<=0||H1<=L1)      { s.status=MSS_STRUCT_INVALID; return s.status; }
+-
+-s.vwapVig=gVwapValue;
+-if(s.vwapVig<=0) { s.status=MSS_STRUCT_INVALID; return s.status; }
+-
+-s.upper =s.vwapVig+SigmaD1*gBandMultiplier;
+-s.lower =s.vwapVig-SigmaD1*gBandMultiplier;
+-s.bandRange=s.upper-s.lower;
+-if(s.bandRange<=0) { s.status=MSS_STRUCT_INVALID; return s.status; }
+-
+-// Candle M1 fechada (shift 1 = última fechada)
+-s.price =iClose(Symbol(),Inp_SignalTF,1);
+-s.open1 =iOpen (Symbol(),Inp_SignalTF,1);
+-s.candleBody=MathAbs(s.price-s.open1);
+-if(s.price<=0) { s.status=MSS_STRUCT_INVALID; return s.status; }
+-
+-// C5 (idêntico à v2.44)
+-s.posRel=(s.price-s.lower)/s.bandRange;
+-s.glass=(s.posRel>Inp_VWAP_Outer_Pct)||(s.posRel<(1.0-Inp_VWAP_Outer_Pct));
+-s.dir=0;
+-if(s.posRel>=Inp_VWAP_Inner_Pct)      s.dir=-1;
+-else if(s.posRel<=(1.0-Inp_VWAP_Inner_Pct)) s.dir=1;
+-s.dirCont=0;
+-if(s.posRel>=Inp_VWAP_Inner_Pct)      s.dirCont=1;
+-else if(s.posRel<=(1.0-Inp_VWAP_Inner_Pct)) s.dirCont=-1;
+-
+- if(s.glass&&!Inp_EnableAbsorption) { s.status=MSS_STOP_KAMIKAZE_CONT_ONLY;
+-return s.status; }
+- if(s.dir==0&&s.dirCont==0) { s.status=MSS_STOP_NO_C5_TRIGGER; return
+-s.status; }
+-s.c5AbsOk =(s.dir!=0);
+-s.c5ContOk=(s.dirCont!=0)&&!s.glass;
+-
+-// Distância D-1
+-s.distAbs =MathAbs(s.price-VWAP_D1);
+-bool priceAbove=(s.price>VWAP_D1);
+-
+-// Thresholds (pts fixos — hipóteses)
+-s.minDispl =gABS_MinDisplPts;
+-s.maxBody =gABS_MaxBodyPts;
+-s.contMinDispl=gCONT_MinDisplPts;
+-
+-// C2/C3 ABS (fórmulas idênticas à v2.44)
+-bool sideC2Ok=((s.dir==-1&&priceAbove)||(s.dir==1&&!priceAbove));
+-s.c2=(sideC2Ok&&s.distAbs>=gC2);
+-bool sideC3Ok=((s.dir==-1&&!priceAbove)||(s.dir==1&&priceAbove));
+-s.c3=(sideC3Ok&&s.distAbs>=gC3Min&&s.distAbs<=gC3Max);
+-s.c23=(s.c2||s.c3);
+-
+- // C2/C3 CONT
+- bool
+-sideContOk=((s.dirCont==1&&s.price>VWAP_D1)||(s.dirCont==-1&&s.price<VWAP_D1));
+- s.c2Cont=(sideContOk&&s.distAbs>=gC2);
+- s.c3Cont=(sideContOk&&s.distAbs>=gC3Min&&s.distAbs<=gC3Max);
+- s.c23Cont=(s.c2Cont||s.c3Cont);
+-
+-// C4 (idêntico à v2.44)
+-s.posRange=(s.price-L1)/(H1-L1);
+-s.c4
+-=(s.dir==-1)?(s.posRange>=1.0-Inp_Rule_40_60):(s.posRange<=Inp_Rule_40_60);
+-
+-s.c4Cont=(s.dirCont==1)?(s.posRange>=1.0-Inp_Rule_40_60):(s.posRange<=Inp_Rule_40_60);
+-
+-// POC — janelas Inp_POC_WindowSec referenciadas ao início do sinal atual (causal)
+-// Nunca inclui ticks da barra viva (to = t0 - 1ms)
+-datetime t0_bar=iTime(Symbol(),Inp_SignalTF,0); // início da barra viva atual
+-ulong t0_msc=(ulong)t0_bar*1000;
+-ulong win_msc=(ulong)Inp_POC_WindowSec*1000;
+-
+-if(t0_msc>2*win_msc)
+-{
+-    ulong fromNow =t0_msc-win_msc;
+-    ulong toNow =t0_msc-1;
+-    ulong fromPrev=t0_msc-2*win_msc;
+-    ulong toPrev =t0_msc-win_msc-1;
+-ComputePOCWithTie(fromNow, toNow, s.pocNow);
+-ComputePOCWithTie(fromPrev, toPrev, s.pocPrev);
+-
+-  // Optional tie rejection; baseline false preserves canonical deterministic POC
+-  // Comportamento como input: frequência real de ties ainda desconhecida
+-  if(Inp_RejectPOCTies)
+- {
+-     if(s.pocNow.ok && s.pocNow.hasTie) s.pocNow.ok = false;
+-     if(s.pocPrev.ok && s.pocPrev.hasTie) s.pocPrev.ok = false;
+- }
+-}
+-s.windowsValid=(s.pocNow.ok&&s.pocPrev.ok);
+-
+-// Movimento de preço e POC
+-if(s.windowsValid)
+-{
+-    s.priceMove=s.pocNow.lastValidPrice-s.pocPrev.lastValidPrice;
+-    s.pocMove =s.pocNow.poc-s.pocPrev.poc;
+-}
+-
+-// Canonical v2.44 classification; only scale is fixed points.
+-s.displacementOk=s.windowsValid && MathAbs(s.priceMove)>=s.minDispl;
+-s.moveDir=0;
+-s.pocState=POCS_INVALID;
+-if(s.windowsValid)
+-{
+-    if(s.displacementOk)
+-    {
+-        s.moveDir=(s.priceMove>0)?1:-1;
+-    bool follows=(s.pocMove*s.priceMove>0) &&
+-      MathAbs(s.pocMove)>=MathAbs(s.priceMove)*Inp_POC_FollowRatio;
+-    s.pocState=follows?POCS_FOLLOWING:POCS_DIVERGENT;
+-  }
+-  else s.pocState=POCS_NO_DISPLACEMENT;
+-}
+-s.contDisplacementOk=s.windowsValid && MathAbs(s.priceMove)>=s.contMinDispl;
+-s.contMoveDir=0;
+-s.contPocState=POCS_INVALID;
+-if(s.windowsValid)
+-{
+-    if(s.contDisplacementOk)
+-    {
+-        s.contMoveDir=(s.priceMove>0)?1:-1;
+-        bool follows=(s.pocMove*s.priceMove>0) &&
+-         MathAbs(s.pocMove)>=MathAbs(s.priceMove)*Inp_POC_FollowRatio;
+-        s.contPocState=follows?POCS_FOLLOWING:POCS_DIVERGENT;
+-    }
+-    else s.contPocState=POCS_NO_DISPLACEMENT;
+-}
+-
+-// WW M1 (do cache reconstruído)
+-s.wwok =wwValid;
+-s.effort =wwEffortClosed;
+-s.waveDir=wwWaveDirClosed;
+- if(s.wwok)
+- {
+-    s.wwWaveBars=wwCurrentWaveBars;
+-    s.wwAccumVolume=wwAccumClosed;
+-    s.wwDistancePts=(wwWaveStartPrice>0)?MathAbs(s.price-wwWaveStartPrice):0;
+-    datetime waveStart=iTime(Symbol(),Inp_SignalTF,wwCurrentWaveBars);
+-    s.wwWaveAgeAvailable=wwCurrentWaveBars>0 && waveStart>0 &&
+-t0_bar>=waveStart;
+-    if(s.wwWaveAgeAvailable) s.wwWaveAgeSec=(long)(t0_bar-waveStart);
+- }
+-
+-// C1 ABS — fórmula idêntica à v2.44
+-s.c1_effort_ok =s.wwok&&(s.effort>=Inp_ABS_Effort);
+-s.c1_body_ok =(s.candleBody<=s.maxBody);
+-s.c1_displacement_ok=s.displacementOk;
+-s.c1_movedir_ok =(s.moveDir==-s.dir); // telemetria
+-s.c1_wavedir_ok =(s.waveDir==s.moveDir); // telemetria
+-
+-// Contextos POC ABS
+-// DIVERGENCE: possible only after displacementOk in canonical classification
+-s.absDivergence =s.windowsValid&&(s.pocState==POCS_DIVERGENT);
+-// STALL_STRICT: below minimum displacement + small candle body
+-s.absStallStrict
+-=s.windowsValid&&(s.pocState==POCS_NO_DISPLACEMENT)&&s.c1_body_ok;
+-// STALL_RAW: sem movimento (sem exigência de corpo — telemetria)
+-// FOLLOWING_REACTION: POC segue, preço na direção ABS, com displacement
+-s.absFollowingReaction =s.windowsValid&&(s.pocState==POCS_FOLLOWING)&&
+-     s.displacementOk&&(s.moveDir==s.dir);
+-// FOLLOWING_EXTENSION: POC segue, preço contra ABS — NÃO valida ABS
+-s.absFollowingExtension =s.windowsValid&&(s.pocState==POCS_FOLLOWING)&&
+-     s.displacementOk&&(s.moveDir==-s.dir);
+-s.absPocContextOk=s.absDivergence||s.absStallStrict||s.absFollowingReaction;
+-// C1 ABS (mestre)
+-s.c1=s.c1_effort_ok&&s.absPocContextOk;
+-
+-// C1 CONT — fórmula idêntica à v2.44
+-s.cont_effort_ok =s.wwok&&(s.effort>=Inp_CONT_Effort);
+-s.cont_displacement_ok=s.contDisplacementOk;
+-s.cont_poc_ok
+-=s.windowsValid&&s.contDisplacementOk&&(s.contPocState==POCS_FOLLOWING);
+-s.cont_movedir_ok =(s.contMoveDir==s.dirCont);
+-s.cont_wavedir_ok =(s.waveDir==s.dirCont);
+-s.candleDir =(s.price>s.open1)?1:((s.price<s.open1)?-1:0);
+-s.cont_candle_dir_ok=!Inp_Cont_RequireCandleDirection||
+-      (s.dirCont==1&&s.price>s.open1)||
+-      (s.dirCont==-1&&s.price<s.open1);
+-s.c1Cont=s.cont_effort_ok&&s.cont_displacement_ok&&s.cont_poc_ok&&
+-   s.cont_movedir_ok&&s.cont_wavedir_ok&&s.cont_candle_dir_ok;
+-  // BASE / TURBO (idêntico à v2.44)
+-  s.turboAbs =(s.c1&&s.c23&&s.c4);
+-  s.baseAbs =(s.c1&&(s.c23||s.c4)&&!s.turboAbs);
+-    s.scoreEff =(s.c1?1:0)+(s.c23?1:0)+(s.c4?1:0);
+-    s.turboCont=(s.c1Cont&&s.c23Cont&&s.c4Cont);
+-    s.baseCont =(s.c1Cont&&(s.c23Cont||s.c4Cont)&&!s.turboCont);
+-    s.scoreContEff=(s.c1Cont?1:0)+(s.c23Cont?1:0)+(s.c4Cont?1:0);
+-
+-    // Validade antes do filtro macro
+-    s.absValid =Inp_EnableAbsorption &&s.c5AbsOk &&(s.turboAbs||s.baseAbs);
+-    s.contValid=Inp_EnableContinuation&&s.c5ContOk&&(s.turboCont||s.baseCont);
+-
+- // FILTRO MACROCONTEXT
+- // ABS M1 precisa concordar com macroAbsDir
+- // CONT M1 precisa concordar com macroContDir
+- s.macroAbsCompatible =(s.dir ==gMacro.macroAbsDir) &&(s.dir
+-!=0)&&(gMacro.status==MACRO_OK);
+-
+-s.macroContCompatible=(s.dirCont==gMacro.macroContDir)&&(s.dirCont!=0)&&(gMacro.status==MACRO_OK);
+- if(Inp_EnableMacroDirectionGate)
+- {
+-    if(s.absValid && !s.macroAbsCompatible) s.absValid=false;
+-        if(s.contValid && !s.macroContCompatible) s.contValid=false;
+-    }
+-
+-       s.status=MSS_OK;
+-       return s.status;
+-}
+-
+-//=====================================================================
+-// HARD DIRECTIONAL CONTRADICTION (idêntico à v2.44)
+-//=====================================================================
+-bool HasHardDirectionalContradiction(const MatrixSnapshot &s, int armedDir)
+-{
+-   if(s.status!=MSS_OK) return false;
+-   if(armedDir!=1&&armedDir!=-1) return false;
+-   return (s.absValid&&s.dir==-armedDir)||(s.contValid&&s.dirCont==-armedDir);
+-}
+-
+-//=====================================================================
+-// SIZING
+-//=====================================================================
++// Normal sizing: original risk calculation and financial limits.
+ double ComputeLotsForEntry(int direction, double entryPrice, double slPrice)
+ {
+    if(Inp_SizingMode==SIZING_FIXED)
+@@ -2338,8 +1304,7 @@
+       if(!armed.active || armed.dir!=direction ||
+          (armed.mode!="BASE" && armed.mode!="BASE_CONT" &&
+           armed.mode!="TURBO" && armed.mode!="TURBO_CONT")) return 0.0;
+-      bool turbo=(armed.mode=="TURBO" || armed.mode=="TURBO_CONT");
+-      double lots=Inp_FixedLots*(turbo?Inp_TurboLotsMultiplier:1.0);
++      double lots=Inp_FixedLots;
+       double step=SymbolInfoDouble(Symbol(),SYMBOL_VOLUME_STEP);
+       double minimum=SymbolInfoDouble(Symbol(),SYMBOL_VOLUME_MIN);
+       double maximum=SymbolInfoDouble(Symbol(),SYMBOL_VOLUME_MAX);
+@@ -2654,430 +1619,29 @@
+ void CsvConfigRow(string &line)
+ {
+   CsvAdd(line,"S1995"); // SCHEMA_VERSION
+-  CsvAdd(line,BStr(Inp_EnableMacroDirectionGate)); // MACRO_GATE_ENABLED
+-  CsvAdd(line,BStr(Inp_EnableLateDirectionBlock)); //
++  CsvAdd(line,"1"); // historical schema slot; retired strategy switch, no decision use
++  CsvAdd(line,"1"); // historical schema slot; retired strategy switch
+ // LATE_DIRECTION_BLOCK_ENABLED
+-  CsvAdd(line,BStr(Inp_RejectPOCTies)); // REJECT_POC_TIES
++  CsvAdd(line,"0"); // historical schema slot; retired POC switch, no decision use
+   CsvAdd(line,Symbol()); // SYMBOL
+   CsvAdd(line,IntegerToString(gMagicCore)); // MAGIC
+ }
+ 
+-void CsvMacroHeader(string &line)
+-{
+-  CsvAdd(line,"MACRO_STATUS");
+-  CsvAdd(line,"CONTEXT_BAR");
+-  CsvAdd(line,"MACRO_CLOSED_PRICE");
+-  CsvAdd(line,"MACRO_VWAP");
+-  CsvAdd(line,"MACRO_SIGMA_D1");
+-  CsvAdd(line,"MACRO_DIST_VWAP_D1");
+-  CsvAdd(line,"MACRO_POSREL");
+-  CsvAdd(line,"MACRO_GLASS");
+-  CsvAdd(line,"MACRO_ABS_DIR");
+-  CsvAdd(line,"MACRO_CONT_DIR");
+-}
+-
+-void CsvMacroRow(string &line)
+-{
+-  CsvAdd(line,MacroStatusStr(gMacro.status)); // MACRO_STATUS
+-  CsvAdd(line,CsvTime(gMacro.barTime)); // CONTEXT_BAR
+-  CsvAdd(line,CsvD(gMacro.closedPrice)); // MACRO_CLOSED_PRICE
+-  CsvAdd(line,CsvD(gMacro.vwap)); // MACRO_VWAP
+-    CsvAdd(line,CsvD(gMacro.SigmaD1)); // MACRO_SIGMA_D1
+-    CsvAdd(line,CsvD(gMacro.distVWAP_D1)); // MACRO_DIST_VWAP_D1
+-    CsvAdd(line,CsvD(gMacro.posRel)); // MACRO_POSREL
+-    CsvAdd(line,BStr(gMacro.glass)); // MACRO_GLASS
+-    CsvAdd(line,DirStr(gMacro.macroAbsDir)); // MACRO_ABS_DIR
+-    CsvAdd(line,DirStr(gMacro.macroContDir)); // MACRO_CONT_DIR
+-}
+-
+-void CsvMatrixHeader(string &line)
+-{
+-  CsvAdd(line,"MATRIX_SNAPSHOT_AVAILABLE");
+-  CsvAdd(line,"SIGNAL_BAR");
+-  CsvAdd(line,"MATRIX_STATUS");
+-  CsvAdd(line,"ROUTE");
+-  CsvAdd(line,"MODE");
+-  CsvAdd(line,"DIR");
+-  CsvAdd(line,"PRICE");
+-  CsvAdd(line,"OPEN");
+-  CsvAdd(line,"CANDLE_BODY");
+-  CsvAdd(line,"CANDLE_DIR");
+-  CsvAdd(line,"POSREL");
+-  CsvAdd(line,"POS_RANGE");
+-  CsvAdd(line,"GLASS");
+-  CsvAdd(line,"DIST_VWAP_D1");
+-  CsvAdd(line,"VWAP_VIG");
+-  CsvAdd(line,"UPPER_BAND");
+-  CsvAdd(line,"LOWER_BAND");
+-  CsvAdd(line,"BAND_RANGE");
+-  CsvAdd(line,"SIGMA_D1");
+-  CsvAdd(line,"VWAP_D1");
+-  CsvAdd(line,"H1");
+-  CsvAdd(line,"L1");
+-  CsvAdd(line,"ABS_DIR");
+-  CsvAdd(line,"CONT_DIR");
+-  CsvAdd(line,"C1");
+-  CsvAdd(line,"C2");
+-  CsvAdd(line,"C3");
+-  CsvAdd(line,"C4");
+-  CsvAdd(line,"C5");
+-  CsvAdd(line,"C23");
+-  CsvAdd(line,"BASE");
+-  CsvAdd(line,"TURBO");
+-  CsvAdd(line,"CONT_C1");
+-  CsvAdd(line,"CONT_C2");
+-  CsvAdd(line,"CONT_C3");
+-  CsvAdd(line,"CONT_C4");
+-  CsvAdd(line,"CONT_C5");
+-  CsvAdd(line,"CONT_C23");
+- CsvAdd(line,"CONT_BASE");
+- CsvAdd(line,"CONT_TURBO");
+- CsvAdd(line,"ABS_SCORE");
+- CsvAdd(line,"CONT_SCORE");
+- CsvAdd(line,"ABS_VALID");
+- CsvAdd(line,"CONT_VALID");
+- CsvAdd(line,"MACRO_ABS_COMPATIBLE");
+- CsvAdd(line,"MACRO_CONT_COMPATIBLE");
+- CsvAdd(line,"WW_VALID");
+-CsvAdd(line,"WW_EFFORT");
+-CsvAdd(line,"WW_DIR");
+-CsvAdd(line,"WW_WAVE_BARS");
+-CsvAdd(line,"WW_WAVE_AGE_SEC");
+-CsvAdd(line,"WW_ACCUM_VOLUME");
+-CsvAdd(line,"WW_DISTANCE_PTS");
+-CsvAdd(line,"WINDOWS_VALID");
+-CsvAdd(line,"ABS_POC_STATE");
+-CsvAdd(line,"CONT_POC_STATE");
+-CsvAdd(line,"ABS_MIN_MOVE");
+-CsvAdd(line,"ABS_MAX_BODY");
+-CsvAdd(line,"CONT_MIN_MOVE");
+-CsvAdd(line,"ABS_DISPLACEMENT_OK");
+-CsvAdd(line,"CONT_DISPLACEMENT_OK");
+-CsvAdd(line,"ABS_DIVERGENCE");
+-CsvAdd(line,"ABS_STALL_STRICT");
+-CsvAdd(line,"ABS_BODY_OK");
+-CsvAdd(line,"ABS_FOLLOWING_REACTION");
+-CsvAdd(line,"ABS_FOLLOWING_EXTENSION");
+-CsvAdd(line,"ABS_EFFORT_OK");
+-CsvAdd(line,"CONT_EFFORT_OK");
+-CsvAdd(line,"CONT_POC_OK");
+-CsvAdd(line,"CONT_MOVE_DIR_OK");
+-CsvAdd(line,"CONT_WAVE_DIR_OK");
+-CsvAdd(line,"CONT_CANDLE_DIR_OK");
+-CsvAdd(line,"PRICE_MOVE");
+-CsvAdd(line,"POC_MOVE");
+-CsvAdd(line,"MOVE_DIR");
+-CsvAdd(line,"CONT_MOVE_DIR");
+-CsvAdd(line,"POC_NOW");
+-CsvAdd(line,"POC_NOW_VOLUME");
+-CsvAdd(line,"POC_NOW_WINDOW_STATE");
+-CsvAdd(line,"POC_NOW_TIE");
+-CsvAdd(line,"POC_NOW_TRADE_COUNT");
+-CsvAdd(line,"POC_NOW_LEVELS");
+-CsvAdd(line,"POC_NOW_LAST_PRICE");
+-CsvAdd(line,"POC_NOW_TOP1_PRICE");
+-CsvAdd(line,"POC_NOW_TOP1_VOL");
+-CsvAdd(line,"POC_NOW_TOP2_PRICE");
+-CsvAdd(line,"POC_NOW_TOP2_VOL");
+-CsvAdd(line,"POC_NOW_DOMINANCE");
+-CsvAdd(line,"AGG_BUY_NOW");
+-CsvAdd(line,"AGG_SELL_NOW");
+-CsvAdd(line,"AGG_UNKNOWN_NOW");
+-CsvAdd(line,"AGG_DELTA_NOW");
+-CsvAdd(line,"AGG_IMBALANCE_NOW");
+-CsvAdd(line,"AGG_KNOWN_PCT_NOW");
+-CsvAdd(line,"POC_PREV");
+-  CsvAdd(line,"POC_PREV_VOLUME");
+-  CsvAdd(line,"POC_PREV_WINDOW_STATE");
+-  CsvAdd(line,"POC_PREV_TIE");
+-  CsvAdd(line,"POC_PREV_TRADE_COUNT");
+-  CsvAdd(line,"POC_PREV_LEVELS");
+-  CsvAdd(line,"POC_PREV_LAST_PRICE");
+-  CsvAdd(line,"POC_PREV_TOP1_PRICE");
+-  CsvAdd(line,"POC_PREV_TOP1_VOL");
+-  CsvAdd(line,"POC_PREV_TOP2_PRICE");
+-  CsvAdd(line,"POC_PREV_TOP2_VOL");
+-  CsvAdd(line,"POC_PREV_DOMINANCE");
+-  CsvAdd(line,"AGG_BUY_PREV");
+-  CsvAdd(line,"AGG_SELL_PREV");
+-  CsvAdd(line,"AGG_UNKNOWN_PREV");
+-  CsvAdd(line,"AGG_DELTA_PREV");
+-  CsvAdd(line,"AGG_IMBALANCE_PREV");
+-  CsvAdd(line,"AGG_KNOWN_PCT_PREV");
+-   CsvAdd(line,"FLOW_REGIME");
+-   CsvAdd(line,"VOL_RATIO");
+-   CsvAdd(line,"PRICE_EFFICIENCY");
+-   CsvAdd(line,"POC_RESPONSE");
+-}
+-
+-void CsvMatrixRow(string &line,const MatrixSnapshot &s,bool available,datetime signalBar)
+-{
+-  string route = s.absValid && s.contValid ? "CONFLICT" :
+-         (s.absValid ? "ABS" : (s.contValid ? "CONT" : "NONE"));
+-  string mode = s.absValid && s.contValid ? "CONFLICT" :
+-        (s.absValid ? (s.turboAbs ? "TURBO" : "BASE") :
+-         (s.contValid ? (s.turboCont ? "TURBO" : "BASE") : "NONE"));
+-  int direction = s.absValid && !s.contValid ? s.dir :
+-          (s.contValid && !s.absValid ? s.dirCont : 0);
+-  // These four formulas are executable diagnostics in canonical v2.44.
+-  // They remain telemetry and cannot change ABS/CONT or execution.
+-  string flowRegime = !s.c1_effort_ok ? "FLOW_WEAK" :
+-           (!s.displacementOk ? "FLOW_STALL" :
+-            (s.moveDir == s.dir ? "FLOW_REACTION" :
+-             (s.moveDir == -s.dir ? "FLOW_EXTENSION" : "FLOW_NA")));
+-  CsvAdd(line,BStr(available)); // MATRIX_SNAPSHOT_AVAILABLE
+-  CsvAdd(line,CsvTime(signalBar)); // SIGNAL_BAR
+-  CsvAdd(line,available ? (EnumToString(s.status)) : ""); // MATRIX_STATUS
+-  CsvAdd(line,available ? (route) : ""); // ROUTE
+-  CsvAdd(line,available ? (mode) : ""); // MODE
+-  CsvAdd(line,available ? (DirStr(direction)) : ""); // DIR
+-  CsvAdd(line,available ? (CsvD(s.price)) : ""); // PRICE
+-  CsvAdd(line,available ? (CsvD(s.open1)) : ""); // OPEN
+-  CsvAdd(line,available ? (CsvD(s.candleBody)) : ""); // CANDLE_BODY
+-  CsvAdd(line,available ? (IntegerToString(s.candleDir)) : ""); // CANDLE_DIR
+-  CsvAdd(line,available ? (CsvD(s.posRel)) : ""); // POSREL
+-  CsvAdd(line,available ? (CsvD(s.posRange)) : ""); // POS_RANGE
+-  CsvAdd(line,available ? (BStr(s.glass)) : ""); // GLASS
+-  CsvAdd(line,available ? (CsvD(s.distAbs)) : ""); // DIST_VWAP_D1
+-  CsvAdd(line,available ? (CsvD(s.vwapVig)) : ""); // VWAP_VIG
+-  CsvAdd(line,available ? (CsvD(s.upper)) : ""); // UPPER_BAND
+-  CsvAdd(line,available ? (CsvD(s.lower)) : ""); // LOWER_BAND
+-  CsvAdd(line,available ? (CsvD(s.bandRange)) : ""); // BAND_RANGE
+-  CsvAdd(line,available ? (CsvD(SigmaD1)) : ""); // SIGMA_D1
+-  CsvAdd(line,available ? (CsvD(VWAP_D1)) : ""); // VWAP_D1
+-  CsvAdd(line,available ? (CsvD(H1)) : ""); // H1
+-  CsvAdd(line,available ? (CsvD(L1)) : ""); // L1
+-  CsvAdd(line,available ? (DirStr(s.dir)) : ""); // ABS_DIR
+-  CsvAdd(line,available ? (DirStr(s.dirCont)) : ""); // CONT_DIR
+-  CsvAdd(line,available ? (BStr(s.c1)) : ""); // C1
+-  CsvAdd(line,available ? (BStr(s.c2)) : ""); // C2
+-  CsvAdd(line,available ? (BStr(s.c3)) : ""); // C3
+-  CsvAdd(line,available ? (BStr(s.c4)) : ""); // C4
+-  CsvAdd(line,available ? (BStr(s.c5AbsOk)) : ""); // C5
+-  CsvAdd(line,available ? (BStr(s.c23)) : ""); // C23
+-  CsvAdd(line,available ? (BStr(s.baseAbs)) : ""); // BASE
+-  CsvAdd(line,available ? (BStr(s.turboAbs)) : ""); // TURBO
+-  CsvAdd(line,available ? (BStr(s.c1Cont)) : ""); // CONT_C1
+-  CsvAdd(line,available ? (BStr(s.c2Cont)) : ""); // CONT_C2
+-  CsvAdd(line,available ? (BStr(s.c3Cont)) : ""); // CONT_C3
+-  CsvAdd(line,available ? (BStr(s.c4Cont)) : ""); // CONT_C4
+-  CsvAdd(line,available ? (BStr(s.c5ContOk)) : ""); // CONT_C5
+-  CsvAdd(line,available ? (BStr(s.c23Cont)) : ""); // CONT_C23
+-  CsvAdd(line,available ? (BStr(s.baseCont)) : ""); // CONT_BASE
+-  CsvAdd(line,available ? (BStr(s.turboCont)) : ""); // CONT_TURBO
+-  CsvAdd(line,available ? (IntegerToString(s.scoreEff)) : ""); // ABS_SCORE
+-  CsvAdd(line,available ? (IntegerToString(s.scoreContEff)) : ""); // CONT_SCORE
+-  CsvAdd(line,available ? (BStr(s.absValid)) : ""); // ABS_VALID
+-  CsvAdd(line,available ? (BStr(s.contValid)) : ""); // CONT_VALID
+-  CsvAdd(line,available ? (BStr(s.macroAbsCompatible)) : ""); //
+-// MACRO_ABS_COMPATIBLE
+-  CsvAdd(line,available ? (BStr(s.macroContCompatible)) : ""); //
+-// MACRO_CONT_COMPATIBLE
+-  CsvAdd(line,available ? (BStr(s.wwok)) : ""); // WW_VALID
+-  CsvAdd(line,available ? (CsvD(s.effort)) : ""); // WW_EFFORT
+-  CsvAdd(line,available ? (IntegerToString(s.waveDir)) : ""); // WW_DIR
+-  CsvAdd(line,available ? (s.wwok ? IntegerToString(s.wwWaveBars) : "") : ""); //
+-// WW_WAVE_BARS
+-  CsvAdd(line,available ? (s.wwok && s.wwWaveAgeAvailable ?
+-IntegerToString(s.wwWaveAgeSec) : "") : ""); // WW_WAVE_AGE_SEC
+-  CsvAdd(line,available ? (s.wwok ? CsvD(s.wwAccumVolume) : "") : ""); //
+-// WW_ACCUM_VOLUME
+- CsvAdd(line,available ? (s.wwok ? CsvD(s.wwDistancePts) : "") : ""); //
+-// WW_DISTANCE_PTS
+- CsvAdd(line,available ? (BStr(s.windowsValid)) : ""); // WINDOWS_VALID
+- CsvAdd(line,available ? (PocStateStr(s.pocState)) : ""); // ABS_POC_STATE
+- CsvAdd(line,available ? (PocStateStr(s.contPocState)) : ""); // CONT_POC_STATE
+- CsvAdd(line,available ? (CsvD(s.minDispl)) : ""); // ABS_MIN_MOVE
+- CsvAdd(line,available ? (CsvD(s.maxBody)) : ""); // ABS_MAX_BODY
+- CsvAdd(line,available ? (CsvD(s.contMinDispl)) : ""); // CONT_MIN_MOVE
+- CsvAdd(line,available ? (BStr(s.displacementOk)) : ""); // ABS_DISPLACEMENT_OK
+- CsvAdd(line,available ? (BStr(s.contDisplacementOk)) : ""); //
+-// CONT_DISPLACEMENT_OK
+- CsvAdd(line,available ? (BStr(s.absDivergence)) : ""); // ABS_DIVERGENCE
+- CsvAdd(line,available ? (BStr(s.absStallStrict)) : ""); // ABS_STALL_STRICT
+- CsvAdd(line,available ? (BStr(s.c1_body_ok)) : ""); // ABS_BODY_OK
+- CsvAdd(line,available ? (BStr(s.absFollowingReaction)) : ""); //
+-// ABS_FOLLOWING_REACTION
+- CsvAdd(line,available ? (BStr(s.absFollowingExtension)) : ""); //
+-// ABS_FOLLOWING_EXTENSION
+- CsvAdd(line,available ? (BStr(s.c1_effort_ok)) : ""); // ABS_EFFORT_OK
+- CsvAdd(line,available ? (BStr(s.cont_effort_ok)) : ""); // CONT_EFFORT_OK
+- CsvAdd(line,available ? (BStr(s.cont_poc_ok)) : ""); // CONT_POC_OK
+- CsvAdd(line,available ? (BStr(s.cont_movedir_ok)) : ""); // CONT_MOVE_DIR_OK
+- CsvAdd(line,available ? (BStr(s.cont_wavedir_ok)) : ""); // CONT_WAVE_DIR_OK
+- CsvAdd(line,available ? (BStr(s.cont_candle_dir_ok)) : ""); // CONT_CANDLE_DIR_OK
+- CsvAdd(line,available ? (CsvD(s.priceMove)) : ""); // PRICE_MOVE
+- CsvAdd(line,available ? (CsvD(s.pocMove)) : ""); // POC_MOVE
+- CsvAdd(line,available ? (IntegerToString(s.moveDir)) : ""); // MOVE_DIR
+- CsvAdd(line,available ? (IntegerToString(s.contMoveDir)) : ""); // CONT_MOVE_DIR
+- CsvAdd(line,available ? (CsvD(s.pocNow.poc)) : ""); // POC_NOW
+- CsvAdd(line,available ? (CsvD(s.pocNow.totalVolume)) : ""); // POC_NOW_VOLUME
+- CsvAdd(line,available ? (s.pocNow.ok ? "VALID" : "INVALID") : ""); //
+-// POC_NOW_WINDOW_STATE
+- CsvAdd(line,available ? (BStr(s.pocNow.hasTie)) : ""); // POC_NOW_TIE
+- CsvAdd(line,available ? (IntegerToString(s.pocNow.tradeCount)) : ""); //
+-// POC_NOW_TRADE_COUNT
+- CsvAdd(line,available ? (IntegerToString(s.pocNow.levels)) : ""); // POC_NOW_LEVELS
+- CsvAdd(line,available ? (CsvD(s.pocNow.lastValidPrice)) : ""); // POC_NOW_LAST_PRICE
+- CsvAdd(line,available ? (CsvD(s.pocNow.top1Price)) : ""); // POC_NOW_TOP1_PRICE
+- CsvAdd(line,available ? (CsvD(s.pocNow.top1Vol)) : ""); // POC_NOW_TOP1_VOL
+- CsvAdd(line,available ? (s.pocNow.levels >= 2 ? CsvD(s.pocNow.top2Price) : "") : ""); //
+-// POC_NOW_TOP2_PRICE
+- CsvAdd(line,available ? (s.pocNow.levels >= 2 ? CsvD(s.pocNow.top2Vol) : "") : ""); //
+-// POC_NOW_TOP2_VOL
+- CsvAdd(line,available ? (CsvD(s.pocNow.dominance)) : ""); // POC_NOW_DOMINANCE
+- CsvAdd(line,available ? (CsvD(s.pocNow.buyVol)) : ""); // AGG_BUY_NOW
+- CsvAdd(line,available ? (CsvD(s.pocNow.sellVol)) : ""); // AGG_SELL_NOW
+- CsvAdd(line,available ? (CsvD(s.pocNow.unkVol)) : ""); // AGG_UNKNOWN_NOW
+-   CsvAdd(line,available ? (CsvD(s.pocNow.buyVol - s.pocNow.sellVol)) : ""); //
+-// AGG_DELTA_NOW
+-   CsvAdd(line,available ? ((s.pocNow.buyVol + s.pocNow.sellVol > 0.0) ?
+-CsvD((s.pocNow.buyVol - s.pocNow.sellVol)/(s.pocNow.buyVol + s.pocNow.sellVol)) : "") : "");
+-// AGG_IMBALANCE_NOW
+-   CsvAdd(line,available ? ((s.pocNow.buyVol + s.pocNow.sellVol + s.pocNow.unkVol > 0.0) ?
+-CsvD((s.pocNow.buyVol + s.pocNow.sellVol)/(s.pocNow.buyVol + s.pocNow.sellVol +
+-s.pocNow.unkVol)) : "") : ""); // AGG_KNOWN_PCT_NOW
+-   CsvAdd(line,available ? (CsvD(s.pocPrev.poc)) : ""); // POC_PREV
+-   CsvAdd(line,available ? (CsvD(s.pocPrev.totalVolume)) : ""); // POC_PREV_VOLUME
+-   CsvAdd(line,available ? (s.pocPrev.ok ? "VALID" : "INVALID") : ""); //
+-// POC_PREV_WINDOW_STATE
+-   CsvAdd(line,available ? (BStr(s.pocPrev.hasTie)) : ""); // POC_PREV_TIE
+-   CsvAdd(line,available ? (IntegerToString(s.pocPrev.tradeCount)) : ""); //
+-// POC_PREV_TRADE_COUNT
+-   CsvAdd(line,available ? (IntegerToString(s.pocPrev.levels)) : ""); // POC_PREV_LEVELS
+-   CsvAdd(line,available ? (CsvD(s.pocPrev.lastValidPrice)) : ""); //
+-// POC_PREV_LAST_PRICE
+-   CsvAdd(line,available ? (CsvD(s.pocPrev.top1Price)) : ""); // POC_PREV_TOP1_PRICE
+-   CsvAdd(line,available ? (CsvD(s.pocPrev.top1Vol)) : ""); // POC_PREV_TOP1_VOL
+-   CsvAdd(line,available ? (s.pocPrev.levels >= 2 ? CsvD(s.pocPrev.top2Price) : "") : ""); //
+-// POC_PREV_TOP2_PRICE
+-   CsvAdd(line,available ? (s.pocPrev.levels >= 2 ? CsvD(s.pocPrev.top2Vol) : "") : ""); //
+-// POC_PREV_TOP2_VOL
+-   CsvAdd(line,available ? (CsvD(s.pocPrev.dominance)) : ""); // POC_PREV_DOMINANCE
+-   CsvAdd(line,available ? (CsvD(s.pocPrev.buyVol)) : ""); // AGG_BUY_PREV
+-   CsvAdd(line,available ? (CsvD(s.pocPrev.sellVol)) : ""); // AGG_SELL_PREV
+-   CsvAdd(line,available ? (CsvD(s.pocPrev.unkVol)) : ""); // AGG_UNKNOWN_PREV
+-   CsvAdd(line,available ? (CsvD(s.pocPrev.buyVol - s.pocPrev.sellVol)) : ""); //
+-// AGG_DELTA_PREV
+-   CsvAdd(line,available ? ((s.pocPrev.buyVol + s.pocPrev.sellVol > 0.0) ?
+-CsvD((s.pocPrev.buyVol - s.pocPrev.sellVol)/(s.pocPrev.buyVol + s.pocPrev.sellVol)) : "") :
+-""); // AGG_IMBALANCE_PREV
+-   CsvAdd(line,available ? ((s.pocPrev.buyVol + s.pocPrev.sellVol + s.pocPrev.unkVol > 0.0) ?
+-CsvD((s.pocPrev.buyVol + s.pocPrev.sellVol)/(s.pocPrev.buyVol + s.pocPrev.sellVol +
+-s.pocPrev.unkVol)) : "") : ""); // AGG_KNOWN_PCT_PREV
+-   CsvAdd(line,available ? (flowRegime) : ""); // FLOW_REGIME
+-   CsvAdd(line,available ? (CsvD(s.pocPrev.totalVolume > 0.0 ?
+-s.pocNow.totalVolume/s.pocPrev.totalVolume : 0.0)) : ""); // VOL_RATIO
+-   CsvAdd(line,available ? (CsvD(s.minDispl > 0.0 ? MathAbs(s.priceMove)/s.minDispl : 0.0))
+-: ""); // PRICE_EFFICIENCY
+-  CsvAdd(line,available ? (CsvD(MathAbs(s.priceMove) > 0.0 ?
+-MathAbs(s.pocMove)/MathAbs(s.priceMove) : 0.0)) : ""); // POC_RESPONSE
+-}
+-
+-void CsvArmedHeader(string &line)
+-{
+-  CsvAdd(line,"ARMED_ACTIVE");
+-  CsvAdd(line,"ARMED_DIR");
+-  CsvAdd(line,"ARMED_ROUTE");
+-  CsvAdd(line,"ARMED_MODE");
+-  CsvAdd(line,"REGION_HIGH");
+-  CsvAdd(line,"REGION_LOW");
+-  CsvAdd(line,"TRIGGER");
+-  CsvAdd(line,"ARMED_AT");
+-  CsvAdd(line,"ARMED_AGE_SEC");
+-  CsvAdd(line,"REQUESTS_ACCEPTED_TODAY");
+-  CsvAdd(line,"ORDERS_ENTERED_TODAY");
+-  CsvAdd(line,"HARD_FLIPS_PER_DAY");
+-  CsvAdd(line,"ARMED_CANCEL_HARD");
+-  CsvAdd(line,"OPPOSITE_REARM_AFTER_HARD");
+-}
+-
+-void CsvArmedRow(string &line)
+-{
+-  datetime now = TimeTradeServer();
+-  bool armedAgeAvailable = armed.active && armed.armedAt > 0 && now >=
+-armed.armedAt;
+-  long armedAge = armedAgeAvailable ? (long)(now - armed.armedAt) : 0;
+-  CsvAdd(line,BStr(armed.active)); // ARMED_ACTIVE
+-  CsvAdd(line,armed.active ? DirStr(armed.dir) : ""); // ARMED_DIR
+-  CsvAdd(line,armed.active ? armed.route : ""); // ARMED_ROUTE
+-  CsvAdd(line,armed.active ? armed.mode : ""); // ARMED_MODE
+-  CsvAdd(line,armed.active ? CsvD(armed.regionHigh) : ""); // REGION_HIGH
+-  CsvAdd(line,armed.active ? CsvD(armed.regionLow) : ""); // REGION_LOW
+-  CsvAdd(line,armed.active ?
+-ArmedTriggerCell() : ""); // TRIGGER
+-  CsvAdd(line,armed.active ? CsvTime(armed.armedAt) : ""); // ARMED_AT
+-  CsvAdd(line,armedAgeAvailable ? IntegerToString(armedAge) : ""); // ARMED_AGE_SEC
+-  CsvAdd(line,IntegerToString(requestsAcceptedToday)); //
+-// REQUESTS_ACCEPTED_TODAY
+-  CsvAdd(line,IntegerToString(ordersEnteredToday)); // ORDERS_ENTERED_TODAY
+-  CsvAdd(line,IntegerToString(hardFlipsPerDay)); // HARD_FLIPS_PER_DAY
+-  CsvAdd(line,IntegerToString(armedCancelHard)); // ARMED_CANCEL_HARD
+-  CsvAdd(line,IntegerToString(oppositeRearmAfterHard)); //
+-// OPPOSITE_REARM_AFTER_HARD
+-}
+-
+-void CsvExecutionHeader(string &line)
+-{
+-    CsvAdd(line,"EVENT_DIR");
+-    CsvAdd(line,"EVENT_MODE");
+-    CsvAdd(line,"EXEC_ROUTE");
+-    CsvAdd(line,"EVENT_PRICE");
+-    CsvAdd(line,"EVENT_POSREL");
+-    CsvAdd(line,"EVENT_DIST_D1");
+-    CsvAdd(line,"EVENT_EFFORT");
+-    CsvAdd(line,"EVENT_TRIGGER");
+-    CsvAdd(line,"BREAKOUT_PRICE");
+-    CsvAdd(line,"REQUEST_PRICE");
+-    CsvAdd(line,"WEIGHTED_ENTRY_PRICE");
+-    CsvAdd(line,"ENTRY_SLIPPAGE");
+-    CsvAdd(line,"SL_PRICE");
+-    CsvAdd(line,"TP_PRICE");
+-    CsvAdd(line,"LOTS");
+-    CsvAdd(line,"LIVE_DIRECTION_AVAILABLE");
+-    CsvAdd(line,"LIVE_DIR_ABS");
+-    CsvAdd(line,"LIVE_DIR_CONT");
+-    CsvAdd(line,"LATE_DIRECTION_MISMATCH");
+-}
+-
+-void CsvExecutionRow(string &line,string dirStr,string mode,double price,double
+-posRel,double distD1,double effort,double trigger)
+-{
+-  int idx = gOpenPos.tradeRecordIdx;
+-  bool tracked = gOpenPos.active && idx >= 0 && idx < gTradeRecordCount &&
+-         gTradeRecords[idx].positionID == gOpenPos.positionID;
+-  CsvAdd(line,dirStr); // EVENT_DIR
+-  CsvAdd(line,mode); // EVENT_MODE
+-  CsvAdd(line,gPendingExec.active ? gPendingExec.route : (armed.active ? armed.route :
+-"")); // EXEC_ROUTE
+-  CsvAdd(line,CsvD(price)); // EVENT_PRICE
+-  CsvAdd(line,CsvD(posRel)); // EVENT_POSREL
+-  CsvAdd(line,CsvD(distD1)); // EVENT_DIST_D1
+-  CsvAdd(line,CsvD(effort)); // EVENT_EFFORT
+-  CsvAdd(line,CsvD(trigger)); // EVENT_TRIGGER
+-  CsvAdd(line,gLastBreakoutPrice > 0.0 ? CsvD(gLastBreakoutPrice) : ""); //
+-// BREAKOUT_PRICE
+-  CsvAdd(line,gPendingExec.active && gPendingExec.requestPriceAvailable ?
+-CsvD(gPendingExec.requestPrice) : (tracked && gTradeRecords[idx].requestPriceAvailable
+-? CsvD(gTradeRecords[idx].requestPrice) : "")); // REQUEST_PRICE
+-  CsvAdd(line,tracked ? CsvD(gTradeRecords[idx].weightedEntryPrice) : ""); //
+-// WEIGHTED_ENTRY_PRICE
+-  CsvAdd(line,tracked && gTradeRecords[idx].requestPriceAvailable ?
+-CsvD(gTradeRecords[idx].entrySlippage) : ""); // ENTRY_SLIPPAGE
+-  CsvAdd(line,tracked ? CsvD(gTradeRecords[idx].slPrice) : (gPendingExec.active ?
+-CsvD(gPendingExec.slPrice) : "")); // SL_PRICE
+-  CsvAdd(line,tracked ? CsvD(gTradeRecords[idx].tpPrice) : (gPendingExec.active ?
+-CsvD(gPendingExec.tpPrice) : "")); // TP_PRICE
+-  CsvAdd(line,tracked ? CsvD(gTradeRecords[idx].totalVolumeIn) : (gPendingExec.active ?
+-CsvD(gPendingExec.requestedLots) : "")); // LOTS
+-  CsvAdd(line,BStr(gLiveDirectionTelemetryValid)); // LIVE_DIRECTION_AVAILABLE
+-  CsvAdd(line,gLiveDirectionTelemetryValid ? IntegerToString(gLiveDirAbs) : ""); //
+-// LIVE_DIR_ABS
+-  CsvAdd(line,gLiveDirectionTelemetryValid ? IntegerToString(gLiveDirCont) : ""); //
+-// LIVE_DIR_CONT
+-  CsvAdd(line,gLiveDirectionTelemetryValid ? BStr(gLateDirectionMismatch) : ""); //
+-// LATE_DIRECTION_MISMATCH
+-}
++
++
++
++
++
++
++
++
++
++
++
++
++
++
++
+ 
+ void CsvTradeHeader(string &line)
+ {
+@@ -3187,59 +1751,18 @@
+   CsvAdd(line,IntegerToString(oppositeRearmAfterHard)); //
+ // OPPOSITE_REARM_AFTER_HARD
+ }
+-void WriteAuditHeader()
+-{
+-  if(csvAuditHandle == INVALID_HANDLE) return;
+-  string line = "TIMESTAMP,STATUS";
+-  CsvConfigHeader(line);
+-  CsvMacroHeader(line);
+-  CsvMatrixHeader(line);
+-  CsvArmedHeader(line);
+-  CsvExecutionHeader(line);
+-  FARHeader(line);
+-  FileWriteString(csvAuditHandle,line + "\r\n");
+-}
++
+ 
+ void WriteAuditRow(string status,string dirStr,string mode,
+         double price,double posRel,double distD1,double effort,double trigger)
+ {
+-  if(armed.active && armed.signalID!="")
+-  { armed.entryReason=status; WriteEntryDiagnostic(armed,status); }
+-  if(csvAuditHandle == INVALID_HANDLE) return;
+-  string line = "";
+-  CsvAdd(line,CsvTime(TimeTradeServer()));
+-  CsvAdd(line,status);
+-  CsvConfigRow(line);
+-  CsvMacroRow(line);
+-CsvMatrixRow(line,gLastTelemetryMatrix,gLastTelemetryMatrixValid,gLastTelemetrySignalBar);
+-  CsvArmedRow(line);
+-  CsvExecutionRow(line,dirStr,mode,price,posRel,distD1,effort,trigger);
+-  FARRow(line);
+-  FileWriteString(csvAuditHandle,line + "\r\n");
+-}
+-void WriteShadowHeader()
+-{
+-  if(csvShadowHandle == INVALID_HANDLE) return;
+-  string line = "TIMESTAMP,EVENT";
+-  CsvConfigHeader(line);
+-  CsvMacroHeader(line);
+-  CsvMatrixHeader(line);
+-  CsvArmedHeader(line);
+-  FileWriteString(csvShadowHandle,line + "\r\n");
+-}
+-
+-void WriteShadowRow(string event,const MatrixSnapshot &s)
+-{
+-  if(csvShadowHandle == INVALID_HANDLE) return;
+-  string line = "";
+-  CsvAdd(line,CsvTime(TimeTradeServer()));
+-  CsvAdd(line,event);
+-  CsvConfigRow(line);
+-  CsvMacroRow(line);
+-  CsvMatrixRow(line,s,true,iTime(Symbol(),Inp_SignalTF,1));
+-    CsvArmedRow(line);
+-    FileWriteString(csvShadowHandle,line + "\r\n");
+-}
++   // Signature retained for the unchanged financial subsystem; diagnostic only.
++   if(armed.active && armed.signalID!="")
++   { armed.entryReason=status; WriteEntryDiagnostic(armed,status); }
++}
++
++
++
+ 
+ void WriteTradeHeader()
+ {
+@@ -3447,406 +1970,121 @@
+ //=====================================================================
+ // STAGE 1 — EVALUATE MATRIX
+ //=====================================================================
+-ENUM_MSS SnapshotForSignal(MatrixSnapshot &out)
++
++
++void EvaluateMatrix()
+ {
+    datetime bar=iTime(Symbol(),Inp_SignalTF,0);
+-   if(!gCachedMicroReady || gCachedMicroBar!=bar)
+-   {
+-    ulong begin=GetMicrosecondCount();
+-    ComputeMatrixSnapshot(gCachedMicroSnapshot);
+-    if(iTime(Symbol(),Inp_SignalTF,0)!=bar)
+-       gCachedMicroSnapshot.status=MSS_STRUCT_INVALID; // discard a torn bar
+-// snapshot
+-    gCachedMicroBar=bar;
+-    gCachedMicroReady=true;
+-    gLastTelemetryMatrix=gCachedMicroSnapshot;
+-    gLastTelemetryMatrixValid=true;
+-    gLastTelemetrySignalBar=iTime(Symbol(),Inp_SignalTF,1);
+-    RecordPerf(perfMicro,(double)(GetMicrosecondCount()-begin));
+-  }
+-  out=gCachedMicroSnapshot;
+-  return out.status;
+-}
+-
+-void EvaluateMatrix()
+-{
+-  gLiveDirectionTelemetryValid=false;
+-  gLastBreakoutPrice=0;
+- MatrixSnapshot s;
+- ENUM_MSS status=SnapshotForSignal(s);
+-
+-// Gates fail-closed
+-if(status==MSS_VWAP_D1_INVALID)
+-{ WriteAuditRow("VWAP_D1_INVALID","NONE","NONE",0,0,0,0,0); return; }
+-if(status==MSS_SIGMA_INVALID)
+-{ WriteAuditRow("SIGMA_INVALID","NONE","NONE",0,0,0,0,0); return; }
+-if(status==MSS_MACRO_INVALID)
+-{
+-WriteAuditRow("MACRO_INVALID","NONE","NONE",s.price,s.posRel,s.distAbs,s.effort,0);
+-  WriteShadowRow("MACRO_INVALID",s); return; }
+-if(status==MSS_STRUCT_INVALID) return;
+-if(status==MSS_STOP_KAMIKAZE_CONT_ONLY)
+-{ WriteAuditRow("KAMIKAZE_GLASS","NONE","NONE",s.price,s.posRel,0,0,0); return; }
+-if(status==MSS_STOP_NO_C5_TRIGGER)
+-{ WriteAuditRow("NO_C5_TRIGGER","NONE","NONE",s.price,s.posRel,0,0,0); return; }
+-if(status!=MSS_OK) return;
+-
+-// Atualizar cache de bandas
+-UpperBand1=s.upper; LowerBand1=s.lower;
+-
+- // Log de FOLLOWING_EXTENSION (telemetria, não bloqueia nada além do que o C1 já
+-// bloqueia)
+-  if(Inp_EnableAbsorption&&s.absFollowingExtension)
+-    PrintFormat("[SCALPER][ABS_FOLLOWING_EXTENSION_BLOCK] Dir=%s PriceMove=%.4f PocMove=%.4f FLOW=extension",
+-       DirStr(s.dir),s.priceMove,s.pocMove);
+- // ROUTE_CONFLICT_BLOCK
+- if(s.absValid&&s.contValid)
+- {
+-     PrintFormat("[SCALPER][ROUTE_CONFLICT_BLOCK] ABS(dir=%s ctx=%s) e CONT(dir=%s) simultaneamente validas. BLOQUEADO.",
+-       DirStr(s.dir),PocStateStr(s.pocState),DirStr(s.dirCont));
+-
+-WriteAuditRow("ROUTE_CONFLICT_BLOCK","NONE","NONE",s.price,s.posRel,s.distAbs,s
+-.effort,0);
+-   WriteShadowRow("ROUTE_CONFLICT",s);
+-   return;
+- }
+-
+-// Sem confluência
+-if(!s.absValid&&!s.contValid)
+-{
+-    int d2=(s.dir!=0)?s.dir:s.dirCont;
+-
+-WriteAuditRow("NO_CONFLUENCE",DirStr(d2),"NONE",s.price,s.posRel,s.distAbs,s.effort,0
+-);
+-   WriteShadowRow("NO_CONFLUENCE",s);
+-   return;
+- }
+-
+-// Selecionar rota
+-bool useCont=(!s.absValid&&s.contValid);
+-int dirSel =useCont?s.dirCont:s.dir;
+-bool turboSel=useCont?s.turboCont:s.turboAbs;
+-int scoreSel=useCont?s.scoreContEff:s.scoreEff;
+-
+-string mode;
+-if(useCont) mode=turboSel?"TURBO_CONT":"BASE_CONT";
+-else mode=turboSel?"TURBO":"BASE";
+-
+-// Stage 1 arms only a thesis; lots are resolved at the final executable price.
+-double lots=0.0;
+-
+- // Região (N barras M1 fechadas)
+- double regHigh=-DBL_MAX, regLow=DBL_MAX;
+- MqlRates regionRates[];
+- int
+-regionCopied=CopyRates(Symbol(),Inp_SignalTF,1,Inp_Region_Candles,regionRates);
+- bool regionOk=(regionCopied==Inp_Region_Candles);
+- if(regionOk)
+- {
+-     for(int i=0;i<regionCopied;i++)
+-     {
+-if(regionRates[i].high<=0||regionRates[i].low<=0||regionRates[i].high<regionRates[i].low)
+-          { regionOk=false; break; }
+-          if(regionRates[i].high>regHigh) regHigh=regionRates[i].high;
+-          if(regionRates[i].low <regLow) regLow =regionRates[i].low;
+-        }
+-    }
+-    if(!regionOk||regHigh<=-DBL_MAX||regLow>=DBL_MAX||regHigh<=regLow)
+-    {
+-
+-WriteAuditRow("REGION_INVALID",DirStr(dirSel),mode,s.price,s.posRel,s.distAbs,s.effort,0)
+-;
+-    return;
+-  }
+-
+- // Freeze the reference before activating the signal. The clock is independent
+- // of FAR and does not replace s.price with a current Last.
+- EntryTriggerState entry;
+- ZeroMemory(entry);
+- string entryReason="LEGACY_REGION";
+- bool newEntry=useCont || Inp_ABSTriggerReference==ABS_TRIGGER_SIGNAL_CLOSE;
+- MqlTick armClock;
+- ZeroMemory(armClock);
+- bool clockOk=SymbolInfoTick(Symbol(),armClock) && armClock.time_msc>0 &&
+-    armClock.time>0 && (long)armClock.time==armClock.time_msc/1000 &&
+-    armClock.time_msc>=(long)gCachedMicroBar*1000;
+- if(newEntry)
+- {
+-    bool initialized=false;
+-    if(!clockOk) entryReason="SIGNAL_CLOCK_INVALID";
+-    else
+-       initialized=InitSignalCloseTrigger(entry,dirSel,s.price,gBreakoutMargin,
+-                                          armClock.time_msc,entryReason);
+-    if(!initialized)
+-    {
+-       ArmedSignal rejected;
+-       ZeroMemory(rejected);
+-       rejected.dir=dirSel; rejected.route=useCont?"CONT":"ABS"; rejected.mode=mode;
+-       rejected.entry=entry; rejected.entry.signalReferencePrice=s.price;
+-       rejected.entry.thesisMsc=clockOk?armClock.time_msc:0;
+-       rejected.signalID=NewEntrySignalID(); rejected.entryReason=entryReason;
+-       WriteEntryDiagnostic(rejected,entryReason);
+-       PrintFormat("[Scalper 1995][%s] Reference rejected; no alternative price.",entryReason);
+-       WriteAuditRow(entryReason,DirStr(dirSel),mode,s.price,s.posRel,s.distAbs,s.effort,0);
+-       return;
+-    }
+- }
+-
+- // ARMAR
+- if(iTime(Symbol(),Inp_SignalTF,0)!=gCachedMicroBar) return; // closed snapshot/region
+-// must share the same clock
+- gLastBreakoutPrice=0;
+- gLiveDirectionTelemetryValid=false;
+- gLateMismatchLogged=false; gSpreadHoldLogged=false;
+- armed.active =true;
+-armed.dir =dirSel;
+-armed.regionHigh =regHigh;
+-armed.regionLow =regLow;
+-armed.activeSL_Pts =gSL_Pts;
+-armed.activeTP_Pts =gTP_Pts;
+-armed.regionEndTime =iTime(Symbol(),Inp_SignalTF,1);
+-armed.mode        =mode;
+-armed.lots =lots;
+-armed.route =useCont?"CONT":"ABS";
+-armed.breakoutEffortMin=useCont?Inp_CONT_BreakoutEffort:Inp_ABS_BreakoutEffort;
+-armed.armedAt       =TimeTradeServer();
+-armed.sameSideGlassLogged=false;
+-armed.posRel=s.posRel; armed.distD1=s.distAbs; armed.effort=s.effort;
+-armed.vwapVig=s.vwapVig;
+-armed.c1=(int)(useCont?s.c1Cont:s.c1);
+-armed.c2=(int)(useCont?s.c2Cont:s.c2);
+-armed.c3=(int)(useCont?s.c3Cont:s.c3);
+-armed.c4=(int)(useCont?s.c4Cont:s.c4);
+-armed.c5=(int)(useCont?s.c5ContOk:s.c5AbsOk);
+-armed.scoreEff=scoreSel;
+-armed.entry=entry;
+-armed.entryReason=entryReason;
+-armed.entry.signalReferencePrice=s.price; // ABS/CONT freeze exactly their signal close
+-if(!armed.entry.enabled && clockOk) armed.entry.thesisMsc=armClock.time_msc;
+-armed.signalID=NewEntrySignalID();
+-FARCaptureArm();
+-
+-double armTrigger=ArmedTriggerPrice();
+-PrintFormat("[SCALPER][ARMED_%s] %s %s %.2f lots SCORE=%d/3 SL=%.1f "
+-"High=%.4f Low=%.4f Trigger=%.4f OndaViva>=%.2f | "
+-"Macro: AbsDir=%s ContDir=%s PosRelM3=%.4f",
+-armed.route,mode,DirStr(dirSel),lots,scoreSel,gSL_Pts,
+-regHigh,regLow,armTrigger,armed.breakoutEffortMin,
+-DirStr(gMacro.macroAbsDir),DirStr(gMacro.macroContDir),gMacro.posRel);
+-
+-
+-WriteAuditRow("ARMED",DirStr(dirSel),mode,s.price,s.posRel,s.distAbs,s.effort,armTrigger);
+-  WriteShadowRow("ARMED",s);
++   if(bar<=gObjectiveAttachBar || bar==gLastMatrixEvalBar) return;
++   OMThesis s;
++   datetime closed=iTime(Symbol(),Inp_SignalTF,1);
++   if(closed<=0 || closed+PeriodSeconds(Inp_SignalTF)!=bar || !OMGetClosed(closed,s)) return;
++   if(armed.active) return;
++   if(!s.detected || !s.eligible) { gLastMatrixEvalBar=bar; return; }
++   if(gAccountingUnresolved || HasExecutionInFlight() || HasOpenPosition()) return;
++   if((s.route=="ABS" && !Inp_EnableAbsorption) || (s.route=="CONT" && !Inp_EnableContinuation))
++   { gLastMatrixEvalBar=bar; return; }
++   double signalClose=iClose(Symbol(),Inp_SignalTF,1);
++   if(!EntryGridValid(signalClose) || signalClose!=s.price)
++   {
++      ArmedSignal rejected; ZeroMemory(rejected);
++      rejected.signalID=NewEntrySignalID(); rejected.entryReason="M1_TRADE_CLOSE_MISMATCH";
++      rejected.entry.signalReferencePrice=signalClose;
++      WriteEntryDiagnostic(rejected,"M1_TRADE_CLOSE_MISMATCH");
++      gLastMatrixEvalBar=bar; return;
++   }
++   MqlTick clock;
++   if(!SymbolInfoTick(Symbol(),clock) || !OMLiveReady(clock.time_msc) ||
++      clock.time_msc<(long)bar*1000 || clock.last!=gOMLastPrice) return;
++   gLastMatrixEvalBar=bar;
++   EntryTriggerState entry; string reason;
++   if(!InitSignalCloseTrigger(entry,s.dir,signalClose,gBreakoutMargin,clock.time_msc,reason)) return;
++   if(s.route=="CONT" && !ObjectiveContInsideB3(s.dir,entry.trigger,s.bands))
++   {
++      ArmedSignal rejected; ZeroMemory(rejected);
++      rejected.dir=s.dir; rejected.route=s.route;
++      rejected.mode=s.route=="CONT"?"BASE_CONT":"BASE";
++      rejected.entry=entry; rejected.signalID=NewEntrySignalID();
++      rejected.entryReason="CONT_TRIGGER_OUTSIDE_B3";
++      WriteEntryDiagnostic(rejected,"CONT_TRIGGER_OUTSIDE_B3"); return;
++   }
++   if(iTime(Symbol(),Inp_SignalTF,0)!=bar) return;
++   ZeroMemory(armed); armed.active=true; armed.dir=s.dir;
++   armed.route=s.route; armed.mode=s.route=="CONT"?"BASE_CONT":"BASE";
++   armed.activeSL_Pts=gSL_Pts; armed.activeTP_Pts=gTP_Pts;
++   armed.armedAt=TimeTradeServer(); armed.regionEndTime=iTime(Symbol(),Inp_SignalTF,1);
++   armed.effort=s.effort; armed.vwapVig=s.bands.vwap; armed.entry=entry;
++   armed.signalID=NewEntrySignalID(); armed.entryReason="SIGNAL_DETECTED";
++   gObjectiveArmed=s;
++   // Exact original default two closed M1 extremes, EXCLUSIVELY for FAR protection.
++   // A failed collection does not block arm or invent favorable FAR evidence.
++   MqlRates region[];
++   if(CopyRates(Symbol(),Inp_SignalTF,1,2,region)==2)
++   {
++      bool valid=true; double high=0,low=DBL_MAX;
++      for(int i=0;i<2;i++)
++      {
++         if(!FARPriceValid(region[i].high) || !FARPriceValid(region[i].low) ||
++            region[i].high<region[i].low) { valid=false; break; }
++         high=MathMax(high,region[i].high); low=MathMin(low,region[i].low);
++      }
++      if(valid) { armed.regionHigh=high; armed.regionLow=low; }
++   }
++   gCachedMicroBar=bar;
++   FARCaptureArm();
++   WriteEntryDiagnostic(armed,"SIGNAL_DETECTED");
++   WriteAuditRow("ARMED",DirStr(armed.dir),armed.mode,signalClose,0,0,s.effort,entry.trigger);
+ }
+ 
+ //=====================================================================
+ // STAGE 2 — PROCESS ARMED SIGNAL
+ // Preserva toda a lógica da v2.44.
+-// Diferenças: timeout por tempo, WW M1, LATE_DIRECTION_BLOCK novo.
+ //=====================================================================
+-ENUM_APS ProcessArmedSignal()
+-{
++void ProcessArmedSignal()
++{
++   if(!armed.active || HasExecutionInFlight() || HasOpenPosition() || gAccountingUnresolved) return;
+    datetime now=TimeTradeServer();
+-
+-// Timeout por tempo (novo vs. v2.44 que usava barras)
+-if(EntryTimeoutExpired(armed.armedAt,now,Inp_ArmedTimeoutSec))
+-{
+-    PrintFormat("[SCALPER][TIMEOUT_ARMED] %s %s | Idade=%ds | CANCELADO.",
+-     DirStr(armed.dir),armed.route,(int)(now-armed.armedAt));
+-    WriteAuditRow("TIMEOUT_ARMED",DirStr(armed.dir),armed.mode,0,
+-     armed.posRel,armed.distD1,armed.effort,0);
+-    ResetArmedSignal();
+-    return APS_ENDED_REEVAL_ALLOWED;
+-}
+-
+-// Fim de sessão
+-MqlDateTime dt; TimeToStruct(now,dt);
+-int hhmm=dt.hour*100+dt.min;
+-if(hhmm>=Inp_StopEntryHHMM)
+-{
+-    WriteAuditRow("ABORT_SESSION_END",DirStr(armed.dir),armed.mode,0,
+-     armed.posRel,armed.distD1,armed.effort,0);
+-    ResetArmedSignal();
+-    return APS_ENDED_FAIL_CLOSED;
+-}
+-
+- // Evento de negócio real
+- MqlTick tk;
+- if(!SymbolInfoTick(Symbol(),tk)) return APS_STILL_ARMED;
+- if(FARBeforeDecision()) return APS_ENDED_FAIL_CLOSED;
+- if(armed.entry.enabled)
+- {
+-    string reason;
+-    int result=ObserveEntryTrade(armed.entry,tk,reason);
+-    if(result<0 || result==1)
+-    {
+-       armed.entryReason=reason;
+-       WriteAuditRow(reason,DirStr(armed.dir),armed.mode,tk.last,
+-          armed.posRel,armed.distD1,armed.effort,ArmedTriggerPrice());
+-    }
+-    if(result<0) { ResetArmedSignal(); return APS_ENDED_FAIL_CLOSED; }
+-    if(result==0) return APS_STILL_ARMED;
+- }
+- else
+- {
+-    // Fully LEGACY mode keeps the original event and breakout behavior.
+-    bool realTradeEvent=((tk.flags&TICK_FLAG_LAST)!=0)||((tk.flags&TICK_FLAG_VOLUME)!=0)||
+-       ((tk.flags&TICK_FLAG_BUY)!=0)||((tk.flags&TICK_FLAG_SELL)!=0);
+-    if(!realTradeEvent || tk.last<=0) return APS_STILL_ARMED;
+- }
+- double last=tk.last;
+- double trigger=ArmedTriggerPrice();
+- if(!ArmedTriggerReady()) return APS_STILL_ARMED;
+- bool breakout=armed.dir==1?last>=trigger:last<=trigger;
+- if(!breakout) return APS_STILL_ARMED;
+- if(armed.entry.enabled)
+- {
+-    string reason;
+-    if(!ValidateEntryDispatch(armed.entry,tk,reason))
+-    {
+-       armed.entryReason=reason;
+-       WriteAuditRow(reason,DirStr(armed.dir),armed.mode,last,
+-          armed.posRel,armed.distD1,armed.effort,trigger);
+-       return APS_STILL_ARMED;
+-    }
+- }
+-
+-// Preço executável
+-double execPrice=(armed.dir==1)?tk.ask:tk.bid;
+-if(execPrice<=0) return APS_STILL_ARMED;
+-
+-// Overshoot
+-double overLast=(armed.dir==1)?(last-trigger):(trigger-last);
+-double overExec=(armed.dir==1)?(execPrice-trigger):(trigger-execPrice);
+-double overshoot=MathMax(overLast,overExec);
+-if(overshoot>gMaxOvershoot)
+-{
+-    PrintFormat("[SCALPER][OVERSHOOT_BLOCK] Last=%.4f Exec=%.4f Trig=%.4f Over=%.4f Max=%.4f",
+-     last,execPrice,trigger,overshoot,gMaxOvershoot);
+-    WriteAuditRow("OVERSHOOT_BLOCK",DirStr(armed.dir),armed.mode,last,
+-     armed.posRel,armed.distD1,armed.effort,trigger);
+-    ResetArmedSignal();
+-    return APS_ENDED_FAIL_CLOSED;
+-}
+-
+-// Onda viva M1 (usa cache M1 — idêntico à v2.44 mas em M1)
+-if(!wwValid) return APS_STILL_ARMED;
+-double curEff,curVol,avgVol; int waveDir;
+-ComputeLiveWaveO1(curEff,curVol,avgVol,waveDir);
+-if(waveDir!=armed.dir) return APS_STILL_ARMED;
+-if(curEff<armed.breakoutEffortMin) return APS_STILL_ARMED;
+-
+-// VWAP viva
+-double liveVwap=0;
+-if(!GetLiveVwapSnapshot((ulong)tk.time_msc,liveVwap))
+-{
+-    WriteAuditRow("LATE_VWAP_INVALID",DirStr(armed.dir),armed.mode,last,
+-    armed.posRel,armed.distD1,curEff,trigger);
+-    ResetArmedSignal();
+-  return APS_ENDED_FAIL_CLOSED;
+-}
+-double lateUpper=liveVwap+SigmaD1*gBandMultiplier;
+-double lateLower=liveVwap-SigmaD1*gBandMultiplier;
+-double lateRange=lateUpper-lateLower;
+-if(lateRange<=0)
+-{
+-    WriteAuditRow("LATE_VWAP_INVALID",DirStr(armed.dir),armed.mode,last,
+-     armed.posRel,armed.distD1,curEff,trigger);
+-    ResetArmedSignal();
+-    return APS_ENDED_FAIL_CLOSED;
+-}
+-double livePosRel=(last-lateLower)/lateRange;
+-
+-// New hypothesis, OFF in baseline. Neutrality is also a mismatch.
+-int liveDirAbs=0;
+-if(livePosRel>=Inp_VWAP_Inner_Pct) liveDirAbs=-1;
+-else if(livePosRel<=1.0-Inp_VWAP_Inner_Pct) liveDirAbs=1;
+-int liveDirCont=(liveDirAbs==0)?0:-liveDirAbs;
+-bool lateDirectionMismatch=(armed.route=="ABS")?
+-    liveDirAbs!=armed.dir : liveDirCont!=armed.dir;
+-gLiveDirectionTelemetryValid=true;
+-gLiveDirAbs=liveDirAbs; gLiveDirCont=liveDirCont;
+-gLateDirectionMismatch=lateDirectionMismatch;
+-if(lateDirectionMismatch)
+-{
+-   if(Inp_EnableLateDirectionBlock)
+-   {
+-    string directionReason="LATE_DIRECTION_BLOCK";
+-    armed.entryReason=directionReason;
+-    WriteAuditRow(directionReason,DirStr(armed.dir),armed.mode,last,
+-     livePosRel,armed.distD1,curEff,trigger);
+-    ResetArmedSignal();
+-    return APS_ENDED_FAIL_CLOSED;
+-  }
+-  if(!gLateMismatchLogged)
+-  {
+-     gLateMismatchLogged=true;
+-
+-WriteAuditRow("LATE_DIRECTION_MISMATCH_SHADOW",DirStr(armed.dir),armed.mode,
+-last,
+-      livePosRel,armed.distD1,curEff,trigger);
+-    }
+-  }
+-
+-    // LATE_GLASS_BLOCK (idêntico à v2.44)
+-    bool
+-dynamicGlass=(livePosRel>Inp_VWAP_Outer_Pct)||(livePosRel<(1.0-Inp_VWAP_Outer_Pct
+-));
+-    bool isAbsRoute=(armed.route=="ABS");
+-    bool oppositeGlassABS=
+-       (armed.dir==-1&&livePosRel<(1.0-Inp_VWAP_Outer_Pct))||
+-       (armed.dir== 1&&livePosRel>Inp_VWAP_Outer_Pct);
+-   bool lateGlassBlock=isAbsRoute?oppositeGlassABS:dynamicGlass;
+-   if(lateGlassBlock)
+-   {
+-  PrintFormat("[SCALPER][LATE_GLASS_BLOCK] Rota=%s Dir=%s LivePosRel=%.4f",
+-    armed.route,DirStr(armed.dir),livePosRel);
+-  WriteAuditRow("LATE_GLASS_BLOCK",DirStr(armed.dir),armed.mode,last,
+-    livePosRel,armed.distD1,curEff,trigger);
+-  ResetArmedSignal();
+-  return APS_ENDED_FAIL_CLOSED;
+- }
+- if(isAbsRoute&&dynamicGlass&&!armed.sameSideGlassLogged)
+- {
+-     armed.sameSideGlassLogged=true;
+-     PrintFormat("[SCALPER][ABS_LATE_GLASS_SAMESIDE_ALLOW] %s ABS LivePosRel=%.4f",
+-       DirStr(armed.dir),livePosRel);
+- }
+-
+-// Position, pending execution and daily quota remain operational guards.
+-if(HasExecutionInFlight()) { ResetArmedSignal(); return APS_TRADE_OR_POSITION; }
+-// Posição / cota / risco diário
+-if(HasOpenPosition())          { ResetArmedSignal(); return APS_TRADE_OR_POSITION; }
+-if(ordersEnteredToday>=Inp_MaxTradesDay) { ResetArmedSignal(); return
+-APS_TRADE_OR_POSITION; }
+-if(dailyRiskBlocked)
+-{
+-    WriteAuditRow("DAILY_RISK_BLOCK",DirStr(armed.dir),armed.mode,last,
+-     armed.posRel,armed.distD1,armed.effort,trigger);
+-    ResetArmedSignal();
+-    return APS_ENDED_FAIL_CLOSED;
+-}
+-
+-  // Spread
+-  if(!SpreadOk())
+-  {
+-      if(!gSpreadHoldLogged)
+-      {
+-         gSpreadHoldLogged=true;
+-         WriteAuditRow("HOLD_SPREAD",DirStr(armed.dir),armed.mode,last,
+-           armed.posRel,armed.distD1,armed.effort,trigger);
+-      }
+-      return APS_STILL_ARMED;
+-  }
+-
+-PrintFormat("[SCALPER][DISPARO_%s] %s Trigger=%.4f Last=%.4f WW_EFF=%.2f>=%.2f Modo=%s",
+-armed.route,DirStr(armed.dir),trigger,last,curEff,armed.breakoutEffortMin,armed.mode);
+-    gLastBreakoutPrice=last; // observed real trade, never fabricated
+-    bool ok=SendOrder(armed.dir,armed.lots,armed.mode,
+-      armed.activeSL_Pts,armed.activeTP_Pts,
+-       armed.posRel,armed.distD1,curEff,trigger);
+-    ResetArmedSignal();
+-    return ok?APS_TRADE_OR_POSITION:APS_ENDED_FAIL_CLOSED;
++   if(EntryTimeoutExpired(armed.armedAt,now,Inp_ArmedTimeoutSec))
++   { WriteAuditRow("TIMEOUT_ARMED",DirStr(armed.dir),armed.mode,0,0,0,0,ArmedTriggerPrice()); ResetArmedSignal(); return; }
++   MqlDateTime dt; TimeToStruct(now,dt);
++   if(dt.hour*100+dt.min>=Inp_StopEntryHHMM)
++   { WriteAuditRow("ABORT_SESSION_END",DirStr(armed.dir),armed.mode,0,0,0,0,ArmedTriggerPrice()); ResetArmedSignal(); return; }
++   if(ordersEnteredToday>=Inp_MaxTradesDay || dailyRiskBlocked) return;
++   MqlTick tk;
++   if(!SymbolInfoTick(Symbol(),tk)) return;
++   if(!EntryGridValid(tk.ask) || !EntryGridValid(tk.bid) || tk.ask<tk.bid) return;
++   // Original terminal overshoot precedes the spread hold and strategy data work.
++   // Only an actual post-thesis trade beyond the frozen trigger is evidence.
++   if(EntryRealTrade(tk) && tk.time_msc>armed.entry.thesisMsc &&
++      (armed.dir==1?tk.last>=armed.entry.trigger:tk.last<=armed.entry.trigger))
++   {
++      double overLast=armed.dir*(tk.last-armed.entry.trigger);
++      double overExec=armed.dir*((armed.dir==1?tk.ask:tk.bid)-armed.entry.trigger);
++      if(MathMax(overLast,overExec)>gMaxOvershoot)
++      { WriteAuditRow("OVERSHOOT_BLOCK",DirStr(armed.dir),armed.mode,tk.last,0,0,0,ArmedTriggerPrice()); ResetArmedSignal(); return; }
++   }
++   string reason;
++   if(!ObjectiveRevalidate(reason)) return;
++   if(FARBeforeDecision()) return;
++   if(!OMLiveReady(tk.time_msc)) return;
++   // Geography may invalidate before trigger confirmation, but never closes a position.
++   if(armed.route=="CONT" &&
++      !ObjectiveContInsideB3(armed.dir,armed.dir==1?tk.ask:tk.bid,gObjectiveArmed.bands))
++   { WriteAuditRow("CONT_EXEC_OUTSIDE_B3",DirStr(armed.dir),armed.mode,tk.last,0,0,0,ArmedTriggerPrice()); ResetArmedSignal(); return; }
++   if(ObserveEntryTrade(armed.entry,tk,reason)==1)
++      WriteAuditRow("TRIGGER_CONFIRMED",DirStr(armed.dir),armed.mode,tk.last,0,0,0,ArmedTriggerPrice());
++   // Quote-only callbacks can use already-proven Last without inventing a new trade.
++   if(!EntryDispatchGuard(tk)) return;
++   if(!SpreadOk()) return;
++   double trigger=ArmedTriggerPrice();
++   gLastBreakoutPrice=tk.last;
++   WriteEntryDiagnostic(armed,"DISPATCH_CANDIDATE");
++   SendOrder(armed.dir,armed.lots,armed.mode,armed.activeSL_Pts,armed.activeTP_Pts,
++             armed.posRel,armed.distD1,armed.effort,trigger);
++   if(!armed.active) return;
++   // A transient pre-preparation guard failure may wait within the ORIGINAL timeout.
++   // A claimed/attempted signal is never sent twice; financial ambiguity owns recovery.
++   if(armed.entry.dispatchAttempted || HasExecutionInFlight() || HasOpenPosition()) ResetArmedSignal();
+ }
+ 
+ //=====================================================================
+@@ -3951,22 +2189,11 @@
+ //=====================================================================
+ void DailyReset()
+ {
+-   UpperBand1=0; LowerBand1=0;
+-   ResetArmedSignal(); ResetVwapCache(); ResetMacroContext(gMacro);
+-   wwValid=false; wwCurrentWaveBars=0; wwWaveStartPrice=0;
+-   VWAP_D1=0; H1=0; L1=0; VWAP_D1_Official=false; SigmaD1=0;
+-   d1Ready=false; nextD1Retry=0;
++   ResetArmedSignal(); OMReset();
++   gLastMatrixEvalBar=0;
++   gObjectiveAttachBar=iTime(Symbol(),Inp_SignalTF,0);
+    eodDone=false; eodStuckLogged=false; eodNextTry=0;
+-   gLastMatrixEvalBar=0; gCachedMicroReady=false; gCachedMicroBar=0;
+-   gLastTelemetryMatrixValid=false; gLastTelemetrySignalBar=0;
+-   gLiveDirectionTelemetryValid=false;
+-   hardFlipsPerDay=0; armedCancelHard=0; oppositeRearmAfterHard=0;
+-   gLastBreakoutPrice=0; gLateMismatchLogged=false; gSpreadHoldLogged=false;
+-   ResetPerfStat(perfMacro); ResetPerfStat(perfMicro); ResetPerfStat(perfStage2); ResetPerfStat(perfPOC);
+-   gLastPerfLoggedMicroCount=0;
+-   ResetAccountingDay(); // preserve open lifecycle and pending requests across midnight
+-   TryCalcD1();
+-   BootstrapCachesNoTrade();
++   ResetAccountingDay(); // literal financial reset/reconstruction, open lifecycle retained
+ }
+ 
+ //=====================================================================
+@@ -3989,13 +2216,11 @@
+ bool Validate1995Inputs()
+ {
+    if((Inp_ExitMode!=ORIGINAL_FIXED_TP && Inp_ExitMode!=PROGRESSIVE_NO_TP) ||
+-      Inp_MaxProtectedR<1 || Inp_MaxProtectedR>5 || !Positive(Inp_TurboLotsMultiplier) ||
++      Inp_MaxProtectedR<1 || Inp_MaxProtectedR>5 ||
+       (Inp_AggressionFilterMode!=FAR_OFF && Inp_AggressionFilterMode!=FAR_OBSERVAR &&
+        Inp_AggressionFilterMode!=FAR_APLICAR) ||
+       !MathIsValidNumber(Inp_AggressionThresholdPct) ||
+       Inp_AggressionThresholdPct<=50 || Inp_AggressionThresholdPct>100) return false;
+-   if(Inp_ABSTriggerReference!=ABS_TRIGGER_LEGACY_REGION &&
+-      Inp_ABSTriggerReference!=ABS_TRIGGER_SIGNAL_CLOSE) return false;
+    if(Inp_ExitMode==PROGRESSIVE_NO_TP && !Inp_EnableBreakEven)
+    { Print("[Scalper 1995][CONFIG] PROGRESSIVE_NO_TP requires Inp_EnableBreakEven=true"); return false; }
+    int ctxSec=PeriodSeconds(Inp_ContextTF), sigSec=PeriodSeconds(Inp_SignalTF);
+@@ -4003,26 +2228,13 @@
+    if(!ValidHHMM(Inp_StartHHMM) || !ValidHHMM(Inp_StopEntryHHMM) ||
+       !ValidHHMM(Inp_EOD_CloseHHMM) || Inp_StartHHMM>=Inp_StopEntryHHMM ||
+       Inp_StopEntryHHMM>=Inp_EOD_CloseHHMM) return false;
+-   if(Inp_POC_WindowSec<=0 || Inp_ArmedTimeoutSec<=0 || Inp_Region_Candles<1 ||
+-      Inp_MaxTradesDay<1 || Inp_MaxTradesDay>MAX_TRADE_RECORDS) return false;
+-   if(!Positive(Inp_ABS_Effort) || !Positive(Inp_CONT_Effort) ||
+-      !Positive(Inp_ABS_BreakoutEffort) || !Positive(Inp_CONT_BreakoutEffort)) return false;
++   if(Inp_ArmedTimeoutSec<=0 || Inp_MaxTradesDay<1 || Inp_MaxTradesDay>MAX_TRADE_RECORDS) return false;
+    if(!Positive(gSL_Pts) || !MathIsValidNumber(gTP_Pts) ||
+       (Inp_ExitMode==ORIGINAL_FIXED_TP ? !Positive(gTP_Pts) : gTP_Pts<0) || !Positive(gSpreadMaxPts) ||
+-      !Positive(gMaxOvershoot) || !Positive(gABS_MinDisplPts) ||
+-      !Positive(gABS_MaxBodyPts) || !Positive(gCONT_MinDisplPts)) return false;
++      !Positive(gMaxOvershoot)) return false;
+    if(!OnPriceGrid(gSL_Pts) || (gTP_Pts!=0 && !OnPriceGrid(gTP_Pts)) || !OnPriceGrid(gMaxOvershoot) ||
+       !OnPriceGrid(gBreakoutMargin) || gBreakoutMargin<gTickSize-1e-9) return false;
+-   // Analytical thresholds are deliberately not required to be on the tick grid.
+-   if(!Positive(gBandMultiplier) || !MathIsValidNumber(Inp_VWAP_Inner_Pct) ||
+-      Inp_VWAP_Inner_Pct<=0.5 || Inp_VWAP_Inner_Pct>=1 ||
+-      !Positive(Inp_VWAP_Outer_Pct) || Inp_VWAP_Outer_Pct<=1 ||
+-      !MathIsValidNumber(Inp_Rule_40_60) || Inp_Rule_40_60<=0 || Inp_Rule_40_60>=0.5 ||
+-      !Positive(gC3Min) || !Positive(gC3Max) || !Positive(gC2) ||
+-      gC3Min>gC3Max || gC3Max>=gC2 || !Positive(Inp_POC_FollowRatio)) return false;
+-   if(SigmaLookbackDays<1 || SigmaLookbackDays>20 || !Positive(Inp_SigmaFloor_WIN) ||
+-      !Positive(Inp_SigmaFloor_WDO) || Inp_CooldownSec<0 || Inp_LossCooldownSec<0)
+-return false;
++   if(Inp_CooldownSec<0 || Inp_LossCooldownSec<0) return false;
+    if(gMagicCore<=0 || gMaxDeviationPts<0) return false;
+    if(Inp_SizingMode!=SIZING_FIXED && Inp_SizingMode!=SIZING_RISK_PERCENT)
+ return false;
+@@ -4041,37 +2253,15 @@
+   if(Inp_EnableDailyRiskStop && !Positive(Inp_MaxDailyLossR)) return false;
+   if(Inp_EnableConsecutiveLossStop && Inp_MaxConsecutiveLosses<1) return false;
+   if(!Inp_EnableAbsorption && !Inp_EnableContinuation) return false;
+-  return true;
++  if(!Positive(Inp_ABS_Effort) || !Positive(Inp_CONT_Effort) ||
++     !Positive(gABS_MinDisplPts) || !Positive(gCONT_MinDisplPts)) return false;
++  return OMValidateInputs();
+ }
+ void BootstrapCachesNoTrade()
+ {
+-  datetime contextBar=iTime(Symbol(),Inp_ContextTF,0);
+-  datetime signalBar=iTime(Symbol(),Inp_SignalTF,0);
+-   // Set clocks before any fallible data work. Recovery cannot synthesize a close.
+-   if(contextBar>0) lastContextBarTime=contextBar;
+-   if(signalBar>0) lastSignalBarTime=signalBar;
+-   gCachedMicroReady=false; gCachedMicroBar=0;
+-   gLastTelemetryMatrixValid=false; gLastTelemetrySignalBar=0;
+-   gLiveDirectionTelemetryValid=false;
+-   ResetArmedSignal();
+-   if(contextBar>0)
+-   {
+-      gVwapOk=UpdateVwapIncremental(contextBar);
+-      gVwapValue=(gVwapOk && vwapSumVol>0)?vwapSumPV/vwapSumVol:0;
+-      if(d1Ready && gVwapOk)
+-      {
+-         ulong begin=GetMicrosecondCount();
+-         ComputeMacroContext();
+-         RecordPerf(perfMacro,(double)(GetMicrosecondCount()-begin));
+-      }
+-   }
+-   if(signalBar>0)
+-   {
+-      gVwapOk=UpdateVwapIncremental(signalBar);
+-      gVwapValue=(gVwapOk && vwapSumVol>0)?vwapSumPV/vwapSumVol:0;
+-      RebuildWeisCache();
+-   }
+-   // Never EvaluateMatrix here, even if every cache is ready.
++   gObjectiveAttachBar=iTime(Symbol(),Inp_SignalTF,0);
++   gLastMatrixEvalBar=gObjectiveAttachBar;
++   OMReset(); // reconstruction never arms historical bars
+ }
+ 
+ // Restore 1.122 account compatibility. Ownership/conflict checks remain per action;
+@@ -4117,9 +2307,6 @@
+   { Print("[Scalper 1995][CONFIG] Unsupported contract symbol: ",sym); return INIT_PARAMETERS_INCORRECT; }
+   gBandMultiplier=gIsIndexFamily?Inp_BandMultiplier_WIN:Inp_BandMultiplier_WDO;
+   gMagicCore=gIsIndexFamily?Inp_Magic_WIN:Inp_Magic_WDO;
+-  gC2=gIsIndexFamily?Inp_C2_WIN:Inp_C2_WDO;
+-  gC3Min=gIsIndexFamily?Inp_C3_Min_WIN:Inp_C3_Min_WDO;
+-  gC3Max=gIsIndexFamily?Inp_C3_Max_WIN:Inp_C3_Max_WDO;
+ 
+ gMaxDeviationPts=gIsIndexFamily?Inp_MaxDeviationPts_WIN:Inp_MaxDeviationPts_WDO;
+ gSpreadMaxPts=gIsIndexFamily?Inp_SpreadMaxPts_WIN:Inp_SpreadMaxPts_WDO;
+@@ -4129,7 +2316,6 @@
+ gTP_Pts=gIsIndexFamily?Inp_TP_Pts_WIN:Inp_TP_Pts_WDO;
+ 
+ gABS_MinDisplPts=gIsIndexFamily?Inp_ABS_MinPriceMovePts_WIN:Inp_ABS_MinPriceMovePts_WDO;
+-gABS_MaxBodyPts=gIsIndexFamily?Inp_ABS_MaxBodyPts_WIN:Inp_ABS_MaxBodyPts_WDO;
+ 
+ gCONT_MinDisplPts=gIsIndexFamily?Inp_CONT_MinPriceMovePts_WIN:Inp_CONT_MinPriceMovePts_WDO;
+   gTickSize=SymbolInfoDouble(Symbol(),SYMBOL_TRADE_TICK_SIZE);
+@@ -4156,46 +2342,17 @@
+   { Print("[Scalper 1995][INSTANCE_LOCK_UNAVAILABLE] initialization blocked"); return INIT_FAILED; }
+   MqlDateTime now; TimeToStruct(TimeTradeServer(),now);
+   gDayKey=now.year*1000+now.day_of_year;
+-  ResetMacroContext(gMacro); ResetArmedSignal(); ResetVwapCache(); ResetOpenPos();
++  ResetArmedSignal(); ResetOpenPos();
+   InitializeAccounting();
+-  wwValid=false; wwCurrentWaveBars=0; wwWaveStartPrice=0;
+- lastContextBarTime=0; lastSignalBarTime=0; gLastMatrixEvalBar=0;
+- gCachedMicroReady=false; gCachedMicroBar=0;
+- gLastTelemetryMatrixValid=false; gLastTelemetrySignalBar=0;
+- gLiveDirectionTelemetryValid=false;
+- gLastBreakoutPrice=0; gLateMismatchLogged=false; gSpreadHoldLogged=false;
+- hardFlipsPerDay=0; armedCancelHard=0; oppositeRearmAfterHard=0;
+- d1Ready=false; nextD1Retry=0;
+- eodDone=false; eodStuckLogged=false; eodNextTry=0;
+- ResetPerfStat(perfMacro); ResetPerfStat(perfMicro); ResetPerfStat(perfStage2); ResetPerfStat(perfPOC);
+- gLastPerfLoggedMicroCount=0; gLastFlushTime=0;
+- RestoreDailyPersistence();
+- TryCalcD1();
+- BootstrapCachesNoTrade();
++  gLastFlushTime=0; eodDone=false; eodStuckLogged=false; eodNextTry=0;
++  RestoreDailyPersistence();
++  BootstrapCachesNoTrade();
+ // A configurable label cannot remove the explicit schema namespace.
+ string prefix="Scalper1995_";
+ if(CSVFileName!="Scalper1995" && CSVFileName!="") prefix+=CSVFileName+"_";
+ string suffix=Symbol()+"_"+IntegerToString(gMagicCore);
+ gTradeCsvFileName=prefix+suffix+"_Trades.csv";
+ EntryDiagnosticsInit(); // session-local stream; originals and financial recovery are untouched
+-
+-csvAuditHandle=FileOpen(prefix+suffix+"_Audit.csv",FILE_READ|FILE_WRITE|FILE_TXT|FILE_ANSI);
+- if(csvAuditHandle!=INVALID_HANDLE)
+- {
+-   if(FileSize(csvAuditHandle)==0) WriteAuditHeader();
+-   else if(!FARAuditSchemaCompatible())
+-   {
+-      Print("[Scalper 1995][AUDIT_SCHEMA_INCOMPATIBLE] Existing audit is preserved; telemetry append disabled.");
+-      FileClose(csvAuditHandle); csvAuditHandle=INVALID_HANDLE;
+-   }
+-   if(csvAuditHandle!=INVALID_HANDLE)
+-   { FileSeek(csvAuditHandle,0,SEEK_END); FileFlush(csvAuditHandle); }
+- }
+-
+-csvShadowHandle=FileOpen(prefix+suffix+"_Shadow.csv",FILE_READ|FILE_WRITE|FILE_TXT|FILE_ANSI);
+- if(csvShadowHandle!=INVALID_HANDLE)
+- { if(FileSize(csvShadowHandle)==0) WriteShadowHeader();
+-FileSeek(csvShadowHandle,0,SEEK_END); FileFlush(csvShadowHandle); }
+ 
+ csvTradeHandle=FileOpen(prefix+suffix+"_Trades.csv",FILE_READ|FILE_WRITE|FILE_TXT
+ |FILE_ANSI|FILE_SHARE_READ|FILE_SHARE_WRITE);
+@@ -4207,20 +2364,22 @@
+         Print("[SCALPER][TRADES_CSV_INDEX_UNAVAILABLE] Finalization records require CSV reconciliation.");
+      FileSeek(csvTradeHandle,0,SEEK_END);
+   }
+-  int timerSec=(MQLInfoInteger(MQL_TESTER)!=0)?60:1;
+-  if(!EventSetTimer(timerSec)) return INIT_FAILED;
+-  PrintFormat("[Scalper 1995] %s Magic=%d Context=%s Signal=%s MacroGate=%s LateDirection=%s RejectTies=%s; edge empirical not demonstrated.",
+-     sym,gMagicCore,EnumToString(Inp_ContextTF),EnumToString(Inp_SignalTF),
+-BStr(Inp_EnableMacroDirectionGate),BStr(Inp_EnableLateDirectionBlock),BStr(Inp_RejectPOCTies));
+-  PrintFormat("[Scalper 1995][EFFECTIVE] %s magic=%d SL=%.8f TP=%.8f exit=%s spread=%.8f deviation=%d SYMBOL_POINT=%.8f tick=%.8f breakout=%.8f overshoot=%.8f ABSmove=%.8f ABSbody=%.8f CONTmove=%.8f C2=%.8f C3min=%.8f C3max=%.8f sigmaFloor=%.8f bands=%.8f sigmaDays=%d POCsec=%d context=%s signal=%s",
+-     sym,gMagicCore,gSL_Pts,Inp_ExitMode==PROGRESSIVE_NO_TP?0.0:gTP_Pts,EnumToString(Inp_ExitMode),
+-     gSpreadMaxPts,gMaxDeviationPts,SymbolInfoDouble(Symbol(),SYMBOL_POINT),gTickSize,
+-     gBreakoutMargin,gMaxOvershoot,gABS_MinDisplPts,gABS_MaxBodyPts,gCONT_MinDisplPts,
+-     gC2,gC3Min,gC3Max,gIsIndexFamily?Inp_SigmaFloor_WIN:Inp_SigmaFloor_WDO,gBandMultiplier,
+-     SigmaLookbackDays,Inp_POC_WindowSec,EnumToString(Inp_ContextTF),EnumToString(Inp_SignalTF));
+-  PrintFormat("[Scalper 1995][ENTRY_EFFECTIVE] ABS=%s CONT=SIGNAL_CLOSE margin=%.8f timeoutSec=%d FAR=%s (filter only)",
+-     EnumToString(Inp_ABSTriggerReference),gBreakoutMargin,Inp_ArmedTimeoutSec,
+-     EnumToString(Inp_AggressionFilterMode));
++  // One-second analytical catch-up also in tester; financial recovery retains its own throttles.
++  gFinancialTimerDue=TimeTradeServer()+(MQLInfoInteger(MQL_TESTER)!=0?60:1);
++  if(!EventSetTimer(1)) return INIT_FAILED;
++  Print("[Remora Objective] EXPERIMENTAL; native compilation/replay not certified; financial namespace S1995 retained.");
++  PrintFormat("[OBJECTIVE_INPUTS] warmup_sec=%d min_trades=%d min_sigma_ticks=%.8f session_start=%d session_end=%d max_gap_sec=%d baseline_waves=%d reversal_pts=%.8f event_ticks=%d CONT_eff=%.8f ABS_eff=%.8f rejection=%.8f chunk_msc=%d max_records=%d chunks_per_timer=%d sigma_tolerance_ticks=%.12f",
++     Inp_BandsWarmupSec,Inp_BandsMinTrades,Inp_BandsMinSigmaTicks,
++     Inp_RegularSessionStartHHMM,Inp_RegularSessionEndHHMM,Inp_FeedMaxGapSec,
++     Inp_WaveBaselineMin,gIsIndexFamily?Inp_WaveReversalPts_WIN:Inp_WaveReversalPts_WDO,
++     Inp_PathEventTicks,Inp_CONT_MinPathEfficiency,Inp_ABS_MaxPathEfficiency,
++     Inp_ABS_MinRejectionFraction,Inp_DataChunkMsc,Inp_DataMaxChunkTrades,
++     Inp_DataChunksPerTimer,Inp_SigmaCheckToleranceTicks);
++  PrintFormat("[OBJECTIVE_EFFECTIVE] symbol=%s magic=%d context=%s signal=%s k=%.8f abs_volume_ratio=%.8f cont_volume_ratio=%.8f abs_progress=%.8f cont_progress=%.8f trigger_margin=%.8f timeout=%d spread=%.8f overshoot=%.8f deviation=%d SL=%.8f TP_input=%.8f exit=%s FAR=%s FAR_threshold=%.8f",
++     sym,gMagicCore,EnumToString(Inp_ContextTF),EnumToString(Inp_SignalTF),gBandMultiplier,
++     Inp_ABS_Effort,Inp_CONT_Effort,gABS_MinDisplPts,gCONT_MinDisplPts,gBreakoutMargin,
++     Inp_ArmedTimeoutSec,gSpreadMaxPts,gMaxOvershoot,gMaxDeviationPts,gSL_Pts,gTP_Pts,
++     EnumToString(Inp_ExitMode),EnumToString(Inp_AggressionFilterMode),Inp_AggressionThresholdPct);
+   return INIT_SUCCEEDED;
+ }
+ 
+@@ -4229,14 +2388,10 @@
+ //=====================================================================
+ void OnDeinit(const int reason)
+ {
+-   EventKillTimer();
++   EventKillTimer(); OMClose();
+    EntryDiagnosticsClose();
+    if(gInstanceLock!=INVALID_HANDLE) { FileClose(gInstanceLock); gInstanceLock=INVALID_HANDLE; }
+-   if(csvAuditHandle !=INVALID_HANDLE){ FileFlush(csvAuditHandle);
+-FileClose(csvAuditHandle); csvAuditHandle =INVALID_HANDLE; }
+-   if(csvShadowHandle!=INVALID_HANDLE){
+-FileFlush(csvShadowHandle);FileClose(csvShadowHandle);csvShadowHandle=INVALID_HANDLE; }
+-  if(csvTradeHandle !=INVALID_HANDLE){ FileFlush(csvTradeHandle);
++   if(csvTradeHandle !=INVALID_HANDLE){ FileFlush(csvTradeHandle);
+ FileClose(csvTradeHandle); csvTradeHandle =INVALID_HANDLE; }
+ }
+ 
+@@ -4245,33 +2400,39 @@
+ //=====================================================================
+ // Accounting/execution uncertainty still blocks entries. This observer has no
+ // access to the arming path and does not populate its shared snapshot cache.
+-void ObserveAccountingBlockedMatrix(datetime signalBar)
+-{
+-  if(!gAccountingUnresolved || armed.active || signalBar<=0 ||
+-     gLastReadOnlyMatrixBar==signalBar) return;
+-  if(HasOpenPosition() || ordersEnteredToday>=Inp_MaxTradesDay || dailyRiskBlocked)
+-return;
+-  MqlDateTime observationTime; TimeToStruct(TimeTradeServer(),observationTime);
+-  int observationHHMM=observationTime.hour*100+observationTime.min;
+-  if(observationHHMM<Inp_StartHHMM || observationHHMM>=Inp_StopEntryHHMM) return;
+-  if(Inp_CooldownSec>0 && lastCloseConfirmedTime>0 &&
+-     TimeTradeServer()-lastCloseConfirmedTime<Inp_CooldownSec) return;
+-  if(Inp_LossCooldownSec>0 && lastTradeWasLoss && lastCloseConfirmedTime>0 &&
+-     TimeTradeServer()-lastCloseConfirmedTime<Inp_LossCooldownSec) return;
+-  if(!d1Ready || !gVwapOk || !wwValid) return;
+-  if(Inp_EnableMacroDirectionGate && gMacro.status!=MACRO_OK) return;
+-  if(iTime(Symbol(),Inp_SignalTF,0)!=signalBar) return;
+-  gLastReadOnlyMatrixBar=signalBar; // One bounded attempt, including invalid snapshots.
+-  MatrixSnapshot observation;
+-  ComputeMatrixSnapshot(observation);
+-  if(iTime(Symbol(),Inp_SignalTF,0)!=signalBar)
+-  {
+-    Print("[SCALPER][MATRIX_READ_ONLY_DISCARDED] Signal bar changed; entries remain blocked.");
+-    return;
+-  }
+-  WriteShadowRow("MATRIX_READ_ONLY_ACCOUNTING_BLOCK",observation);
+-  PrintFormat("[SCALPER][MATRIX_READ_ONLY_ACCOUNTING_BLOCK] Status=%s ExecutionInFlight=%s; observation only, entries remain blocked.",
+-           MssStr(observation.status),BStr(HasExecutionInFlight()));
++
++
++void ObjectiveDecisionCycle()
++{
++   datetime bar=iTime(Symbol(),Inp_SignalTF,0);
++   if(bar<=0) return;
++   // Observation never changes an existing thesis, its trigger, or its timeout.
++   datetime closed=iTime(Symbol(),Inp_SignalTF,1);
++   OMThesis observed;
++   if(closed>0 && closed!=gObjectiveObservedBar && OMGetClosed(closed,observed))
++   {
++      gObjectiveObservedBar=closed;
++      if(armed.active) OMTelemetry("OBSERVATION_WHILE_ARMED",observed);
++      else if(gAccountingUnresolved || HasExecutionInFlight() || HasOpenPosition())
++         OMTelemetry("OBSERVATION_FINANCIAL_BLOCK",observed);
++   }
++   // Closed snapshots are observed even when an older thesis or finance blocks arming.
++   if(armed.active)
++   {
++      ProcessArmedSignal();
++      // Do not arm a replacement in the event that invalidated the prior thesis.
++      return;
++   }
++   MqlDateTime dt; TimeToStruct(TimeTradeServer(),dt);
++   int hhmm=dt.hour*100+dt.min;
++   if(hhmm<Inp_StartHHMM || hhmm>=Inp_StopEntryHHMM) return;
++   if(HasOpenPosition() || HasExecutionInFlight() || ordersEnteredToday>=Inp_MaxTradesDay ||
++      dailyRiskBlocked || gAccountingUnresolved) return;
++   if(Inp_CooldownSec>0 && lastCloseConfirmedTime>0 &&
++      TimeTradeServer()-lastCloseConfirmedTime<Inp_CooldownSec) return;
++   if(Inp_LossCooldownSec>0 && lastTradeWasLoss && lastCloseConfirmedTime>0 &&
++      TimeTradeServer()-lastCloseConfirmedTime<Inp_LossCooldownSec) return;
++   EvaluateMatrix();
+ }
+ 
+ void OnTick()
+@@ -4286,86 +2447,9 @@
+  ProcessEOD(hhmm);
+  ManageBreakEven();
+  if(hhmm>=Inp_StopEntryHHMM && armed.active) ResetArmedSignal();
+- datetime btCtx=iTime(Symbol(),Inp_ContextTF,0);
+- datetime btSig=iTime(Symbol(),Inp_SignalTF,0);
+- if(btCtx<=0 || btSig<=0) return;
+- if(lastContextBarTime==0 || lastSignalBarTime==0)
+- {
+-    // Late availability of bar clocks initializes state, never synthesizes a signal.
+-    BootstrapCachesNoTrade();
+-    return;
+- }
+- bool newCtx=btCtx!=lastContextBarTime;
+- bool newSig=btSig!=lastSignalBarTime;
+- if(newCtx)
+- {
+- lastContextBarTime=btCtx;
+- double savedValue=gVwapValue; bool savedOk=gVwapOk;
+- gVwapOk=UpdateVwapIncremental(btCtx);
+- gVwapValue=(gVwapOk && vwapSumVol>0)?vwapSumPV/vwapSumVol:0;
+- ulong begin=GetMicrosecondCount();
+- ComputeMacroContext();
+- RecordPerf(perfMacro,(double)(GetMicrosecondCount()-begin));
+- gVwapValue=savedValue; gVwapOk=savedOk;
+-}
+-if(newSig)
+-{
+-   lastSignalBarTime=btSig;
+-   gCachedMicroReady=false;
+-   gVwapOk=UpdateVwapIncremental(btSig);
+-   gVwapValue=(gVwapOk && vwapSumVol>0)?vwapSumPV/vwapSumVol:0;
+-   if(gVwapValue<=0) gVwapOk=false;
+-   RebuildWeisCache();
+-}
+-bool hardCancelled=false;
+-int previousDir=0;
+-if(armed.active)
+-{
+-   if(newSig && d1Ready && gVwapOk && wwValid &&
+-      (!Inp_EnableMacroDirectionGate || gMacro.status==MACRO_OK))
+-   {
+-      MatrixSnapshot snapshot;
+-      SnapshotForSignal(snapshot);
+-      if(HasHardDirectionalContradiction(snapshot,armed.dir))
+-      {
+-        previousDir=armed.dir;
+-        hardFlipsPerDay++; armedCancelHard++;
+-        WriteAuditRow("ARMED_CANCEL_HARD",DirStr(armed.dir),armed.mode,
+-        snapshot.price,armed.posRel,armed.distD1,armed.effort,0);
+-        WriteShadowRow("ARMED_CANCEL_HARD",snapshot);
+-        ResetArmedSignal(); hardCancelled=true;
+-    }
+-   }
+-   if(!hardCancelled)
+-   {
+-      ulong begin=GetMicrosecondCount();
+-      ENUM_APS outcome=ProcessArmedSignal();
+-      RecordPerf(perfStage2,(double)(GetMicrosecondCount()-begin));
+-      if(outcome!=APS_ENDED_REEVAL_ALLOWED || !newSig) return;
+-   }
+-  }
+-  if(!newSig || hhmm<Inp_StartHHMM || hhmm>=Inp_StopEntryHHMM) return;
+-  if(HasOpenPosition() || HasExecutionInFlight() ||
+-ordersEnteredToday>=Inp_MaxTradesDay ||
+-       dailyRiskBlocked || gAccountingUnresolved)
+-  {
+-    if(gAccountingUnresolved) ObserveAccountingBlockedMatrix(btSig);
+-    return;
+-  }
+-    if(Inp_CooldownSec>0 && lastCloseConfirmedTime>0 &&
+-       TimeTradeServer()-lastCloseConfirmedTime<Inp_CooldownSec) return;
+-    if(Inp_LossCooldownSec>0 && lastTradeWasLoss && lastCloseConfirmedTime>0 &&
+-       TimeTradeServer()-lastCloseConfirmedTime<Inp_LossCooldownSec) return;
+-    if(!d1Ready || !gVwapOk || !wwValid) return;
+-    if(Inp_EnableMacroDirectionGate && gMacro.status!=MACRO_OK) return;
+-    if(gLastMatrixEvalBar==btSig) return;
+-    gLastMatrixEvalBar=btSig;
+-    EvaluateMatrix(); // reuses exact hard-contradiction snapshot if already computed
+-    if(hardCancelled && armed.active && armed.dir==-previousDir)
+-    {
+-       oppositeRearmAfterHard++;
+-       WriteShadowRow("OPPOSITE_REARM_AFTER_HARD",gCachedMicroSnapshot);
+-    }
++ // OBJECTIVE_DATA_AFTER_FINANCE
++ // No history collection on the tick path. Quotes wait for verified timer catch-up.
++ ObjectiveDecisionCycle();
+ }
+ 
+ //=====================================================================
+@@ -4374,40 +2458,30 @@
+ void OnTimer()
+ {
+   if(TimeCurrent()<BacktestStart) return;
++  // Keep the original financial timer cadence (tester60/live1 seconds).
++  // Only analytical catch-up runs at the finer one-second tester schedule.
++  datetime now=TimeTradeServer();
++  bool financeDue=now>=gFinancialTimerDue;
++  if(financeDue)
++  {
++     gFinancialTimerDue=now+(MQLInfoInteger(MQL_TESTER)!=0?60:1);
+   MqlDateTime nowDT; TimeToStruct(TimeTradeServer(),nowDT);
+   int key=nowDT.year*1000+nowDT.day_of_year;
+  int hhmm=nowDT.hour*100+nowDT.min;
+  if(key!=gDayKey) { gDayKey=key; DailyReset(); }
+  SyncAccountingState(true);
+  ReconcileBreakEvenProofs(); // Proof/persistence only; never dispatches a stop modification.
+- if(!d1Ready && TimeTradeServer()>=nextD1Retry) TryCalcD1();
+  if(hhmm>=Inp_StopEntryHHMM && armed.active) ResetArmedSignal();
+  ProcessEOD(hhmm);
+- datetime now=TimeTradeServer();
+- if(now-gLastFlushTime>=30)
++  }
++ OMService();
++ ObjectiveDecisionCycle(); // A verified current trade may confirm an already armed signal.
++ if(financeDue && now-gLastFlushTime>=30)
+  {
+     gLastFlushTime=now;
+     if(gEntryDiagnosticHandle!=INVALID_HANDLE) FileFlush(gEntryDiagnosticHandle);
+-    if(csvAuditHandle!=INVALID_HANDLE) FileFlush(csvAuditHandle);
+-    if(csvShadowHandle!=INVALID_HANDLE) FileFlush(csvShadowHandle);
+     if(csvTradeHandle!=INVALID_HANDLE) FileFlush(csvTradeHandle);
+  }
+- if(MQLInfoInteger(MQL_TESTER)==0 &&
+-perfMicro.count>=gLastPerfLoggedMicroCount+100)
+- {
+- PrintFormat("[SCALPER][PERF] Macro(us) count=%I64d mean=%.1f max=%.1f; Micro(us) count=%I64d mean=%.1f max=%.1f; Stage2(us) count=%I64d mean=%.1f max=%.1f",
+-
+-perfMacro.count,perfMacro.count>0?perfMacro.sumUs/perfMacro.count:0,perfMacro.maxUs
+-,
+-
+-perfMicro.count,perfMicro.count>0?perfMicro.sumUs/perfMicro.count:0,perfMicro.maxUs,
+-
+-perfStage2.count,perfStage2.count>0?perfStage2.sumUs/perfStage2.count:0,perfStage2.maxUs);
+-    PrintFormat("[Scalper 1995][PERF_EXTRA] POC count=%I64d mean_us=%.1f max_us=%.1f FAR count=%I64u mean_us=%.1f max_us=%I64u",
+-       perfPOC.count,perfPOC.count>0?perfPOC.sumUs/perfPOC.count:0,perfPOC.maxUs,
+-       gFARCalls,gFARCalls>0?(double)gFARSumUs/gFARCalls:0,gFARMaxUs);
+-    gLastPerfLoggedMicroCount=perfMicro.count;
+-  }
+ }
+ 
+ //=====================================================================
+--- /dev/null
++++ b/include/ObjectiveMatrix.mqh
+@@ -0,0 +1,799 @@
++// Objective matrix research candidate. No order, position or financial journal access.
++#ifndef REMORA_OBJECTIVE_MATRIX_MQH
++#define REMORA_OBJECTIVE_MATRIX_MQH
++
++// All added defaults are engineering/research hypotheses, not optimized values.
++input int Inp_BandsWarmupSec=300;
++input int Inp_BandsMinTrades=2; // Logical minimum for two distinct trade prices.
++input double Inp_BandsMinSigmaTicks=1.0; // Experimental minimum dispersion on the trade grid; equality allowed.
++input int Inp_RegularSessionStartHHMM=-1; // -1: exactly one published broker session.
++input int Inp_RegularSessionEndHHMM=-1; // Both overrides required; broker server clock.
++input int Inp_FeedMaxGapSec=30; // Experimental coverage diagnostic, not proof of completeness.
++input int Inp_WaveBaselineMin=3; // Experimental minimum of prior CLOSED waves, max10.
++input double Inp_WaveReversalPts_WIN=60.0;
++input double Inp_WaveReversalPts_WDO=2.0;
++input int Inp_PathEventTicks=2; // Causal sampling scale; raw path remains observable.
++input double Inp_CONT_MinPathEfficiency=0.60;
++input double Inp_ABS_MaxPathEfficiency=0.30;
++input double Inp_ABS_MinRejectionFraction=0.35;
++input int Inp_DataChunkMsc=10000;
++input int Inp_DataMaxChunkTrades=50000;
++input int Inp_DataChunksPerTimer=4;
++input double Inp_SigmaCheckToleranceTicks=0.000001;
++
++// OM_KERNEL_BEGIN
++// This numeric kernel is compiled unchanged by the portable C++ harness.
++// No MetaTrader services or financial state are used inside these markers.
++struct OMBands
++{
++   bool ready;
++   long asofMsc;
++   double vwap,sigma,weight,width,upper1,upper2,upper3,lower1,lower2,lower3;
++   long trades;
++};
++struct OMWeighted
++{
++   double weight,mean,m2;
++   long trades;
++   double minimum,maximum;
++};
++void OMWeightedReset(OMWeighted &s) { ZeroMemory(s); }
++bool OMNumber(double n) { return MathIsValidNumber(n) && n!=EMPTY_VALUE; }
++bool OMWeightedAdd(OMWeighted &s,double p,double w)
++{
++   if(!OMNumber(p) || !OMNumber(w) || p<=0 || w<=0 || s.trades>=2147483646)
++      return false;
++   OMWeighted next=s;
++   double total=s.weight+w;
++   if(!OMNumber(total) || total<=s.weight) return false;
++   if(s.trades==0)
++   { next.mean=p; next.m2=0; next.minimum=p; next.maximum=p; }
++   else
++   {
++      double delta=p-s.mean;
++      next.mean=s.mean+(w/total)*delta;
++      next.m2=s.m2+w*delta*(p-next.mean);
++      next.minimum=MathMin(s.minimum,p); next.maximum=MathMax(s.maximum,p);
++   }
++   next.weight=total; next.trades++;
++   if(!OMNumber(next.mean) || !OMNumber(next.m2) || next.m2<0) return false;
++   s=next;
++   return true;
++}
++bool OMBuildBands(const OMWeighted &s,double k,long asof,OMBands &b)
++{
++   ZeroMemory(b); b.asofMsc=asof; b.weight=s.weight; b.trades=s.trades;
++   if(s.trades<2 || !OMNumber(s.weight) || s.weight<=0 || !OMNumber(s.m2) ||
++      s.m2<=0 || !OMNumber(k) || k<=0 || s.maximum<=s.minimum) return false;
++   b.vwap=s.mean; b.sigma=MathSqrt(s.m2/s.weight); b.width=k*b.sigma;
++   b.upper1=b.vwap+b.width; b.upper2=b.vwap+2*b.width; b.upper3=b.vwap+3*b.width;
++   b.lower1=b.vwap-b.width; b.lower2=b.vwap-2*b.width; b.lower3=b.vwap-3*b.width;
++   b.ready=OMNumber(b.upper3) && OMNumber(b.lower3) && b.width>0 && b.lower3>0;
++   return b.ready;
++}
++struct OMWave
++{
++   ulong id;
++   int dir;
++   long startMsc,lastMsc,peakMsc,recognitionMsc;
++   double start,last,high,low,volume,grossPath,eventPath,eventPrice,baseline;
++   int baselineCount;
++   double peakVolume,peakRaw,peakEvent,peakNet,peakEventNet;
++   OMBands attemptBands;
++};
++struct OMWaveBook
++{
++   OMWave active,previous;
++   double closedVolume[10];
++   int count,next;
++   ulong serial;
++};
++void OMWaveReset(OMWaveBook &b) { ZeroMemory(b); }
++double OMBaseline(const OMWaveBook &b)
++{
++   double sum=0;
++   for(int i=0;i<b.count;i++) sum+=b.closedVolume[i];
++   return b.count>0?sum/b.count:0;
++}
++void OMStartWave(OMWaveBook &b,double p,double v,long msc,const OMBands &bands,int dir)
++{
++   ZeroMemory(b.active); b.serial++;
++   b.active.id=b.serial; b.active.dir=dir;
++   b.active.startMsc=msc; b.active.lastMsc=msc; b.active.peakMsc=msc;
++   b.active.recognitionMsc=dir==0?0:msc;
++   b.active.start=p; b.active.last=p; b.active.high=p; b.active.low=p;
++   b.active.eventPrice=p; b.active.volume=v;
++   b.active.baseline=OMBaseline(b); b.active.baselineCount=b.count;
++   b.active.attemptBands=bands;
++}
++bool OMWavePush(OMWaveBook &b,double p,double v,long msc,double reversal,
++                double eventStep,const OMBands &bands)
++{
++   if(!OMNumber(p) || !OMNumber(v) || p<=0 || v<=0 || msc<=0 ||
++      !OMNumber(reversal) || reversal<=0 || !OMNumber(eventStep) || eventStep<=0)
++      return false;
++   if(b.active.id==0) { OMStartWave(b,p,v,msc,bands,0); return true; }
++   OMWave w=b.active;
++   if(msc<w.lastMsc) return false;
++   // Recognition is contemporaneous. The pivot is never assigned a past entry.
++   bool reversed=w.dir!=0 &&
++      (w.dir==1?w.high-p>=reversal:p-w.low>=reversal);
++   if(reversed)
++   {
++      b.previous=w;
++      b.closedVolume[b.next]=w.volume;
++      b.next=(b.next+1)%10; if(b.count<10) b.count++;
++      OMStartWave(b,p,v,msc,bands,-w.dir);
++      return true; // This actual trade belongs once, to the new recognized wave.
++   }
++   w.volume+=v; w.grossPath+=MathAbs(p-w.last);
++   if(MathAbs(p-w.eventPrice)>=eventStep)
++   { w.eventPath+=MathAbs(p-w.eventPrice); w.eventPrice=p; }
++   w.last=p; w.lastMsc=msc;
++   w.high=MathMax(w.high,p); w.low=MathMin(w.low,p);
++   if(w.dir==0 && MathAbs(p-w.start)>=reversal)
++   { w.dir=p>w.start?1:-1; w.recognitionMsc=msc; }
++   if(w.dir!=0)
++   {
++      double progress=w.dir*(p-w.start);
++      // Original effort snapshot frozen at the last newly observed extreme,
++      // before subsequent rejection. Rejection cannot lower this efficiency.
++      if(progress>w.peakNet)
++      {
++         w.peakNet=progress; w.peakVolume=w.volume; w.peakMsc=msc;
++         w.peakRaw=w.grossPath; w.peakEvent=w.eventPath;
++         w.peakEventNet=w.dir*(w.eventPrice-w.start);
++      }
++   }
++   if(!OMNumber(w.volume) || !OMNumber(w.grossPath) || !OMNumber(w.eventPath)) return false;
++   b.active=w;
++   return true;
++}
++struct OMConfig
++{
++   double tick,reversal,eventStep,absEffort,contEffort,minCont,minAbs;
++   double contEfficiency,absEfficiency,minRejection;
++   int minWaves;
++};
++struct OMDecision
++{
++   int classification,dir,reasonCode;
++   ulong waveID;
++   double effort,netProgress,grossPath,eventPath,pathEfficiency,rejection,volume,velocity;
++   long evidenceMsc;
++};
++// Codes:0 NEUTRO,1 CONT_BUY,2 CONT_SELL,3 ABS_BUY,4 ABS_SELL.
++// Reason codes:1 baseline unavailable,2 trajectory unavailable,3 no proved thesis,4 conflict.
++bool OMAbsEvidence(const OMWave &w,double close,long msc,const OMConfig &c,
++                   OMDecision &d)
++{
++   if(w.dir==0 || w.baselineCount<c.minWaves || w.baseline<=0 ||
++      w.peakNet<c.minAbs || w.peakEvent<=0 || w.peakEventNet<=0 ||
++      w.peakVolume<=0 || msc<=w.peakMsc) return false;
++   // Up attempt rejects downward, down attempt upward.
++   double rejection=w.dir==1?w.high-close:close-w.low;
++   if(rejection<c.tick || rejection<c.minRejection*w.peakNet ||
++      w.peakVolume/w.baseline<c.absEffort ||
++      w.peakEventNet/w.peakEvent>c.absEfficiency) return false;
++   ZeroMemory(d); d.classification=w.dir==1?4:3; d.dir=-w.dir; d.waveID=w.id;
++   d.effort=w.peakVolume/w.baseline; d.netProgress=w.peakNet;
++   d.grossPath=w.peakRaw; d.eventPath=w.peakEvent;
++   d.pathEfficiency=w.peakEventNet/w.peakEvent; d.rejection=rejection;
++   d.volume=w.peakVolume; d.evidenceMsc=msc;
++   d.velocity=w.peakMsc>w.startMsc?1000*w.peakVolume/(w.peakMsc-w.startMsc):0;
++   return true;
++}
++void OMClassify(const OMWaveBook &b,double close,long msc,const OMConfig &c,OMDecision &d)
++{
++   ZeroMemory(d); d.reasonCode=3;
++   const OMWave w=b.active;
++   if(w.id==0 || !OMNumber(close) || close<=0 || msc<w.lastMsc)
++   { d.reasonCode=2; return; }
++   OMDecision cont,absNow,absPrevious;
++   ZeroMemory(cont); ZeroMemory(absNow); ZeroMemory(absPrevious);
++   if(w.baselineCount<c.minWaves || w.baseline<=0) d.reasonCode=1;
++   if(w.dir!=0 && w.baselineCount>=c.minWaves && w.baseline>0 && w.eventPath>0)
++   {
++      double net=w.dir*(close-w.start);
++      double eventNet=w.dir*(w.eventPrice-w.start);
++      double efficiency=eventNet/w.eventPath;
++      double drawdown=w.dir==1?w.high-close:close-w.low;
++      if(net>=c.minCont && eventNet>0 && efficiency>=c.contEfficiency &&
++         w.volume/w.baseline>=c.contEffort && drawdown<c.eventStep)
++      {
++         cont.classification=w.dir==1?1:2; cont.dir=w.dir; cont.waveID=w.id;
++         cont.effort=w.volume/w.baseline; cont.netProgress=net;
++         cont.grossPath=w.grossPath; cont.eventPath=w.eventPath;
++         cont.pathEfficiency=efficiency; cont.volume=w.volume; cont.evidenceMsc=msc;
++         cont.velocity=w.lastMsc>w.startMsc?1000*w.volume/(w.lastMsc-w.startMsc):0;
++      }
++   }
++   bool a=OMAbsEvidence(w,close,msc,c,absNow);
++   bool p=b.previous.id>0 && OMAbsEvidence(b.previous,close,msc,c,absPrevious);
++   int candidates=(cont.classification>0?1:0)+(a?1:0)+(p?1:0);
++   if(candidates>1) { d.reasonCode=4; return; } // No arbitrary priority, even same side.
++   if(cont.classification>0) d=cont;
++   else if(a) d=absNow;
++   else if(p) d=absPrevious;
++}
++bool OMLocationEligible(int classification,double price,const OMBands &b)
++{
++   if(!b.ready || !OMNumber(price) || price<=0 || price==b.vwap) return false;
++   if(classification==1) return price>b.vwap && price<=b.upper2;
++   if(classification==2) return price<b.vwap && price>=b.lower2;
++   if(classification==3) return price<b.vwap;
++   if(classification==4) return price>b.vwap;
++   return false;
++}
++bool OMInsideB3(int dir,double price,const OMBands &b)
++{
++   return b.ready && OMNumber(price) && price>0 &&
++      (dir==1?price<b.upper3:(dir==-1?price>b.lower3:false));
++}
++// OM_KERNEL_END
++
++struct OMThesis
++{
++   bool detected,eligible;
++   int dir,classification;
++   string route,reason;
++   ulong waveID,dataEpoch;
++   double price,effort,netProgress,grossPath,eventPath,pathEfficiency,rejection;
++   double testHigh,testLow,velocity,rawEfficiency,residual;
++   long evidenceMsc;
++   OMBands bands,attemptBands;
++};
++OMWeighted gOMWeighted,gOMReference;
++OMWaveBook gOMWaves;
++OMBands gOMLive,gOMContext;
++OMThesis gOMClosed;
++datetime gOMSessionOpen=0,gOMSessionEnd=0,gOMClosedBar=0,gOMContextBar=0;
++long gOMCursor=0,gOMLastTradeMsc=0,gOMAttachMsc=0,gOMBoundaryMsc=0;
++MqlTick gOMBoundary[];
++bool gOMFault=false,gOMConnected=false,gOMVerified=false;
++int gOMSource=0,gOMDay=-1;
++ulong gOMEpoch=0;
++string gOMReason="NOT_INITIALIZED",gOMLastReportedReason="";
++double gOMLastPrice=0,gOMErrorMean=0,gOMErrorSigma=0;
++int gOMLog=INVALID_HANDLE;
++long gOMLastFlush=0,gOMFirstReady=0,gOMLastMetricMsc=0;
++ulong gOMServiceCosts[128];
++int gOMCostNext=0,gOMCostCount=0;
++long gOMZoneTrades[4],gOMZoneMsc[4],gOMVisits[3],gOMFirstVisit[3];
++double gOMZoneVolume[4];
++int gOMPreviousZone=-1;
++double gOMMinSigma=0,gOMMaxSigma=0;
++double gOMPreMinSigma=0,gOMPreMaxSigma=0,gOMPriorSigma=0,gOMRelativeSigmaChange=0;
++
++bool OMClockHHMM(int h) { return h>=0 && h/100<24 && h%100<60; }
++bool OMValidateInputs()
++{
++   double reversal=gIsIndexFamily?Inp_WaveReversalPts_WIN:Inp_WaveReversalPts_WDO;
++   bool overrides=Inp_RegularSessionStartHHMM!=-1 || Inp_RegularSessionEndHHMM!=-1;
++   if(overrides && (!OMClockHHMM(Inp_RegularSessionStartHHMM) ||
++      !OMClockHHMM(Inp_RegularSessionEndHHMM) ||
++      Inp_RegularSessionStartHHMM>=Inp_RegularSessionEndHHMM)) return false;
++   return Inp_BandsWarmupSec>=0 && Inp_BandsMinTrades>=2 &&
++      OMNumber(Inp_BandsMinSigmaTicks) && Inp_BandsMinSigmaTicks>0 &&
++      Inp_FeedMaxGapSec>0 && Inp_WaveBaselineMin>=1 && Inp_WaveBaselineMin<=10 &&
++      OMNumber(reversal) && reversal>=gTickSize &&
++      MathAbs(reversal/gTickSize-MathRound(reversal/gTickSize))<=1e-6 &&
++      Inp_PathEventTicks>=1 && reversal>=Inp_PathEventTicks*gTickSize &&
++      OMNumber(Inp_CONT_MinPathEfficiency) && Inp_CONT_MinPathEfficiency>0 &&
++      Inp_CONT_MinPathEfficiency<=1 && OMNumber(Inp_ABS_MaxPathEfficiency) &&
++      Inp_ABS_MaxPathEfficiency>=0 && Inp_ABS_MaxPathEfficiency<Inp_CONT_MinPathEfficiency &&
++      OMNumber(Inp_ABS_MinRejectionFraction) && Inp_ABS_MinRejectionFraction>0 &&
++      Inp_ABS_MinRejectionFraction<=1 && Inp_DataChunkMsc>=1 && Inp_DataChunkMsc<=60000 &&
++      Inp_DataMaxChunkTrades>=2 && Inp_DataMaxChunkTrades<=1000000 &&
++      Inp_DataChunksPerTimer>=1 && Inp_DataChunksPerTimer<=16 &&
++      OMNumber(Inp_SigmaCheckToleranceTicks) && Inp_SigmaCheckToleranceTicks>0;
++}
++OMConfig OMConfiguration()
++{
++   OMConfig c;
++   c.tick=gTickSize;
++   c.reversal=gIsIndexFamily?Inp_WaveReversalPts_WIN:Inp_WaveReversalPts_WDO;
++   c.eventStep=Inp_PathEventTicks*gTickSize; c.absEffort=Inp_ABS_Effort;
++   c.contEffort=Inp_CONT_Effort; c.minCont=gCONT_MinDisplPts; c.minAbs=gABS_MinDisplPts;
++   c.contEfficiency=Inp_CONT_MinPathEfficiency; c.absEfficiency=Inp_ABS_MaxPathEfficiency;
++   c.minRejection=Inp_ABS_MinRejectionFraction; c.minWaves=Inp_WaveBaselineMin;
++   return c;
++}
++void OMClose()
++{
++   if(gOMLog!=INVALID_HANDLE)
++   { FileFlush(gOMLog); FileClose(gOMLog); gOMLog=INVALID_HANDLE; }
++}
++void OMReset()
++{
++   OMWeightedReset(gOMWeighted); OMWeightedReset(gOMReference); OMWaveReset(gOMWaves);
++   gOMEpoch++;
++   ZeroMemory(gOMLive); ZeroMemory(gOMContext); ZeroMemory(gOMClosed);
++   gOMSessionOpen=0; gOMSessionEnd=0; gOMCursor=0; gOMLastTradeMsc=0;
++   gOMClosedBar=0; gOMContextBar=0; gOMBoundaryMsc=0; ArrayResize(gOMBoundary,0);
++   gOMFault=false; gOMVerified=false; gOMSource=0; gOMReason="SESSION_NOT_RESOLVED";
++   gOMLastPrice=0; gOMErrorMean=0; gOMErrorSigma=0; gOMFirstReady=0;
++   gOMLastMetricMsc=0; gOMPreviousZone=-1; gOMMinSigma=0; gOMMaxSigma=0;
++   gOMPreMinSigma=0; gOMPreMaxSigma=0; gOMPriorSigma=0; gOMRelativeSigmaChange=0;
++   ArrayInitialize(gOMZoneTrades,0); ArrayInitialize(gOMZoneMsc,0);
++   ArrayInitialize(gOMZoneVolume,0); ArrayInitialize(gOMVisits,0);
++   ArrayInitialize(gOMFirstVisit,0);
++   MqlTick tick;
++   gOMAttachMsc=SymbolInfoTick(Symbol(),tick)?tick.time_msc:(long)TimeTradeServer()*1000;
++   MqlDateTime day; TimeToStruct(TimeTradeServer(),day);
++   gOMDay=day.year*1000+day.day_of_year;
++   gOMConnected=TerminalInfoInteger(TERMINAL_CONNECTED)!=0 || MQLInfoInteger(MQL_TESTER)!=0;
++   if(gOMLog==INVALID_HANDLE)
++   {
++      string path="ScalperObjective_v1_"+Symbol()+"_"+(string)TimeLocal()+"_"+
++         (string)GetMicrosecondCount()+".csv";
++      gOMLog=FileOpen(path,FILE_WRITE|FILE_TXT|FILE_ANSI|FILE_SHARE_READ);
++      if(gOMLog!=INVALID_HANDLE)
++         FileWriteString(gOMLog,"EVENT,ASOF_MSC,REASON,READY,W,TRADES,VWAP,SIGMA,B1_UP,B2_UP,B3_UP,B1_DN,B2_DN,B3_DN,MEAN_ERROR_TICKS,SIGMA_ERROR_TICKS,CLASSIFICATION,DIRECTION,LOCATION_ELIGIBLE,WAVE_ID,EFFORT,NET,RAW_PATH,EVENT_PATH,EVENT_EFFICIENCY,RAW_EFFICIENCY,EVENT_RESIDUAL,REJECTION,VOLUME_PER_SEC,ATTEMPT_ASOF,ELAPSED_SESSION_SEC,FIRST_READY_SEC,SIGMA_MIN,SIGMA_MAX,B1_VISITS,B2_VISITS,B3_VISITS,B1_FIRST_SEC,B2_FIRST_SEC,B3_FIRST_SEC,Z0_TRADES,Z1_TRADES,Z2_TRADES,Z3_TRADES,Z0_MSC,Z1_MSC,Z2_MSC,Z3_MSC,Z0_VOLUME,Z1_VOLUME,Z2_VOLUME,Z3_VOLUME,SERVICE_P95_US,SERVICE_P99_US,SERVICE_MAX_US,VOLUME_SOURCE,ACTIVE_WAVE_DIRECTION,ACTIVE_START_MSC,ACTIVE_RECOGNITION_MSC,ACTIVE_PEAK_MSC,PRE_READY_SIGMA_MIN,PRE_READY_SIGMA_MAX,RELATIVE_SIGMA_CHANGE,LAST_PRICE,SIGNED_DISTANCE_TO_B1,SIGNED_DISTANCE_TO_B2,SIGNED_DISTANCE_TO_B3,ATTEMPT_VWAP,ATTEMPT_SIGMA,ATTEMPT_WIDTH\r\n");
++   }
++}
++void OMFail(string reason,bool permanent=false)
++{
++   gOMReason=reason; gOMLive.ready=false; gOMVerified=false;
++   if(permanent) gOMFault=true;
++}
++bool OMResolveSession()
++{
++   MqlDateTime day; TimeToStruct(TimeTradeServer(),day);
++   day.hour=0; day.min=0; day.sec=0; datetime midnight=StructToTime(day);
++   datetime from,to; int count=0;
++   datetime onlyFrom=0,onlyTo=0;
++   for(uint index=0;index<16;index++)
++   {
++      if(!SymbolInfoSessionTrade(Symbol(),(ENUM_DAY_OF_WEEK)day.day_of_week,index,from,to)) break;
++      count++; onlyFrom=from; onlyTo=to;
++   }
++   if(count==0) { OMFail("SESSION_SCHEDULE_UNAVAILABLE"); return false; }
++   if(Inp_RegularSessionStartHHMM>=0)
++   {
++      gOMSessionOpen=midnight+(Inp_RegularSessionStartHHMM/100)*3600+
++         (Inp_RegularSessionStartHHMM%100)*60;
++      gOMSessionEnd=midnight+(Inp_RegularSessionEndHHMM/100)*3600+
++         (Inp_RegularSessionEndHHMM%100)*60;
++      bool covered=false;
++      for(uint index=0;index<(uint)count;index++)
++      {
++         if(!SymbolInfoSessionTrade(Symbol(),(ENUM_DAY_OF_WEEK)day.day_of_week,index,from,to)) return false;
++         long a=(long)from%86400,b=(long)to%86400;
++         if(b==0 && to>from) b=86400;
++         if(midnight+a<=gOMSessionOpen && midnight+b>=gOMSessionEnd) covered=true;
++      }
++      if(!covered) { OMFail("REGULAR_OVERRIDE_OUTSIDE_PUBLISHED_SESSION"); return false; }
++   }
++   else
++   {
++      if(count!=1) { OMFail("SESSION_AMBIGUOUS_SET_REGULAR_HHMM"); return false; }
++      long a=(long)onlyFrom%86400,b=(long)onlyTo%86400;
++      if(b==0 && onlyTo>onlyFrom) b=86400;
++      if(b<=a) { OMFail("OVERNIGHT_SESSION_REQUIRES_SUPPORTED_DAY_MAPPING"); return false; }
++      gOMSessionOpen=midnight+a; gOMSessionEnd=midnight+b;
++   }
++   gOMCursor=(long)gOMSessionOpen*1000;
++   return true;
++}
++bool OMTradeValid(const MqlTick &t,double &volume,int &source)
++{
++   if(t.time_msc<=0 || t.time<=0 || (long)t.time!=t.time_msc/1000 ||
++      !OMNumber(t.last) || t.last<=0 || gTickSize<=0 ||
++      MathAbs(t.last/gTickSize-MathRound(t.last/gTickSize))>1e-6 ||
++      !OMNumber(t.volume_real) || t.volume_real<0 ||
++      (t.flags&(TICK_FLAG_LAST|TICK_FLAG_VOLUME|TICK_FLAG_BUY|TICK_FLAG_SELL))==0)
++      return false;
++   source=t.volume_real>0?1:2;
++   volume=source==1?t.volume_real:(double)t.volume;
++   return OMNumber(volume) && volume>0;
++}
++bool OMTickEqual(const MqlTick &a,const MqlTick &b)
++{
++   return a.time_msc==b.time_msc && a.time==b.time && a.last==b.last &&
++      a.volume==b.volume && a.volume_real==b.volume_real && a.flags==b.flags;
++}
++// No timestamp deduplication: the complete ordered same-ms multiplicity is proof.
++bool OMVerifyBoundary()
++{
++   if(gOMBoundaryMsc==0) return true;
++   MqlTick ticks[];
++   ResetLastError(); int n=CopyTicksRange(Symbol(),ticks,COPY_TICKS_TRADE,
++      (ulong)gOMBoundaryMsc,(ulong)gOMBoundaryMsc);
++   int error=GetLastError(),old=ArraySize(gOMBoundary);
++   if(n<0 || error!=0) { OMFail("BOUNDARY_HISTORY_UNAVAILABLE"); return false; }
++   if(n<old || n>Inp_DataMaxChunkTrades)
++   { OMFail("BOUNDARY_MULTIPLICITY_REVISED_REBUILD_REQUIRED",true); return false; }
++   for(int i=0;i<old;i++)
++      if(!OMTickEqual(ticks[i],gOMBoundary[i]))
++      { OMFail("BOUNDARY_PREFIX_REVISED_REBUILD_REQUIRED",true); return false; }
++   if(n==old) return true;
++   MqlTick suffix[];
++   int appended=n-old;
++   if(ArrayResize(suffix,appended)!=appended)
++   { OMFail("BOUNDARY_ALLOCATION_FAILED"); return false; }
++   for(int i=0;i<appended;i++) suffix[i]=ticks[old+i];
++   // Valid append-only same-ms records count exactly once. An already frozen
++   // close is invalidated, never retrospectively replaced as an old signal.
++   if(!OMApplyBatch(suffix,appended,gOMBoundaryMsc,gOMBoundaryMsc+1)) return false;
++   if(gOMClosedBar>0 && gOMClosed.bands.asofMsc>=gOMBoundaryMsc)
++   { gOMEpoch++; ZeroMemory(gOMClosed); gOMClosedBar=0; }
++   if(ArrayResize(gOMBoundary,n)!=n)
++   { OMFail("BOUNDARY_ALLOCATION_FAILED_AFTER_COMMIT",true); return false; }
++   for(int i=0;i<n;i++) gOMBoundary[i]=ticks[i];
++   gOMVerified=true; OMUpdateReadiness(gOMCursor-1);
++   return !gOMFault;
++}
++// Independent two-pass batch variance then Chan merge. Same exact records;
++// no raw moment subtraction at the large absolute futures-price scale.
++bool OMReferenceBatch(MqlTick &ticks[],int count,OMWeighted &reference)
++{
++   if(count==0) return true;
++   double origin=ticks[0].last,total=0,sumOffset=0;
++   for(int i=0;i<count;i++)
++   {
++      double volume; int source;
++      if(!OMTradeValid(ticks[i],volume,source)) return false;
++      total+=volume; sumOffset+=volume*(ticks[i].last-origin);
++   }
++   if(!OMNumber(total) || total<=0 || !OMNumber(sumOffset)) return false;
++   double mean=origin+sumOffset/total,m2=0;
++   for(int i=0;i<count;i++)
++   {
++      double volume; int source;
++      if(!OMTradeValid(ticks[i],volume,source)) return false;
++      double delta=ticks[i].last-mean;
++      m2+=volume*delta*delta;
++   }
++   double all=reference.weight+total,delta=mean-reference.mean;
++   if(!OMNumber(m2) || !OMNumber(all) || all<=reference.weight) return false;
++   if(reference.trades==0) { reference.mean=mean; reference.m2=m2; }
++   else
++   {
++      reference.m2+=m2+delta*delta*(reference.weight/all)*total;
++      reference.mean+=(total/all)*delta;
++   }
++   reference.weight=all; reference.trades+=count;
++   return OMNumber(reference.m2) && reference.m2>=0 && OMNumber(reference.mean);
++}
++void OMUpdateReadiness(long asof)
++{
++   OMBuildBands(gOMWeighted,gBandMultiplier,asof,gOMLive);
++   if(!gOMLive.ready) { OMFail("DISPERSION_UNAVAILABLE"); return; }
++   gOMRelativeSigmaChange=gOMPriorSigma>0?(gOMLive.sigma-gOMPriorSigma)/gOMPriorSigma:0;
++   gOMPriorSigma=gOMLive.sigma;
++   if(gOMFirstReady==0)
++   {
++      if(gOMPreMinSigma==0 || gOMLive.sigma<gOMPreMinSigma) gOMPreMinSigma=gOMLive.sigma;
++      gOMPreMaxSigma=MathMax(gOMPreMaxSigma,gOMLive.sigma);
++   }
++   if(gOMWeighted.trades<Inp_BandsMinTrades) { OMFail("TRADE_COUNT_NOT_READY"); return; }
++   if(gOMLive.sigma<Inp_BandsMinSigmaTicks*gTickSize)
++   { OMFail("DISPERSION_BELOW_GRID_SCALE"); return; }
++   if(asof-(long)gOMSessionOpen*1000<(long)Inp_BandsWarmupSec*1000)
++   { OMFail("BANDS_WARMUP"); return; }
++   if(!gOMVerified || gOMFault) { OMFail("INDEPENDENT_CHECK_NOT_READY"); return; }
++   gOMLive.ready=true; gOMReason="BANDS_READY";
++   if(gOMFirstReady==0) gOMFirstReady=asof;
++   if(gOMMinSigma==0 || gOMLive.sigma<gOMMinSigma) gOMMinSigma=gOMLive.sigma;
++   gOMMaxSigma=MathMax(gOMMaxSigma,gOMLive.sigma);
++}
++void OMMetric(const MqlTick &t,double volume,const OMBands &b)
++{
++   if(!b.ready || b.width<=0) return;
++   double z=MathAbs(t.last-b.vwap)/b.width;
++   int zone=z>=3?3:(z>=2?2:(z>=1?1:0));
++   gOMZoneTrades[zone]++; gOMZoneVolume[zone]+=volume;
++   if(gOMLastMetricMsc>0 && t.time_msc>=gOMLastMetricMsc && gOMPreviousZone>=0)
++      gOMZoneMsc[gOMPreviousZone]+=t.time_msc-gOMLastMetricMsc;
++   for(int i=0;i<3;i++)
++      if(zone>=i+1 && gOMPreviousZone<i+1)
++      {
++         gOMVisits[i]++;
++         if(gOMFirstVisit[i]==0) gOMFirstVisit[i]=t.time_msc;
++      }
++   gOMLastMetricMsc=t.time_msc; gOMPreviousZone=zone;
++}
++string OMObserved(double value,int precision=8)
++{ return value==EMPTY_VALUE || !OMNumber(value)?"":DoubleToString(value,precision); }
++string OMClassName(int c)
++{
++   if(c==1) return "CONT_BUY"; if(c==2) return "CONT_SELL";
++   if(c==3) return "ABS_BUY"; if(c==4) return "ABS_SELL";
++   return "NEUTRO";
++}
++void OMCaptureThesis(long msc,OMThesis &out)
++{
++   ZeroMemory(out); out.dataEpoch=gOMEpoch; out.bands=gOMLive; out.price=gOMLastPrice;
++   OMConfig cfg=OMConfiguration(); OMDecision d;
++   OMClassify(gOMWaves,out.price,msc,cfg,d);
++   out.classification=d.classification; out.dir=d.dir; out.waveID=d.waveID;
++   out.detected=d.classification!=0;
++   out.route=d.classification==1 || d.classification==2?"CONT":
++      (d.classification==3 || d.classification==4?"ABS":"NONE");
++   out.effort=d.effort; out.netProgress=d.netProgress; out.grossPath=d.grossPath;
++   out.eventPath=d.eventPath; out.pathEfficiency=d.pathEfficiency;
++   out.rejection=d.rejection; out.velocity=d.velocity; out.evidenceMsc=d.evidenceMsc;
++   OMWave w=gOMWaves.active;
++   if(out.detected && gOMWaves.active.id!=d.waveID) w=gOMWaves.previous;
++   if(!out.detected)
++   {
++      out.waveID=w.id; out.netProgress=w.dir*(out.price-w.start);
++      out.grossPath=w.grossPath; out.eventPath=w.eventPath;
++      out.pathEfficiency=w.eventPath>0?w.dir*(w.eventPrice-w.start)/w.eventPath:EMPTY_VALUE;
++      out.effort=w.baseline>0?w.volume/w.baseline:EMPTY_VALUE;
++      out.velocity=w.lastMsc>w.startMsc?1000*w.volume/(w.lastMsc-w.startMsc):0;
++   }
++   out.testHigh=w.high; out.testLow=w.low; out.attemptBands=w.attemptBands;
++   double numerator=out.route=="ABS"?w.peakNet:w.dir*(out.price-w.start);
++   out.rawEfficiency=d.grossPath>0?numerator/d.grossPath:EMPTY_VALUE;
++   out.residual=out.price-w.eventPrice;
++   out.eligible=out.detected && OMLocationEligible(d.classification,out.price,out.bands);
++   out.reason=!out.bands.ready?gOMReason:(!out.detected?
++      (d.reasonCode==1?"WAVE_BASELINE_NOT_READY":(d.reasonCode==2?
++       "TRAJECTORY_INDETERMINATE":(d.reasonCode==4?"THESIS_CONFLICT":"NO_CONFIRMED_THESIS"))):
++      (out.eligible?"SIGNAL_DETECTED":(out.price==out.bands.vwap?
++       "VWAP_EQUALITY_INELIGIBLE":"LOCATION_INELIGIBLE")));
++   if(!out.detected && out.bands.ready && d.reasonCode!=4 && w.eventPath<=0)
++      out.reason="TRAJECTORY_INDETERMINATE_ZERO_EVENT_PATH";
++   else if(!out.detected && out.bands.ready && d.reasonCode!=4 && w.dir==0)
++      out.reason="CANDIDATE_REVERSAL_THRESHOLD_NOT_RECOGNIZED";
++}
++void OMTelemetry(string event,const OMThesis &s)
++{
++   if(gOMLog==INVALID_HANDLE) return;
++   ulong sorted[]; int n=gOMCostCount;
++   ArrayResize(sorted,n);
++   for(int i=0;i<n;i++) sorted[i]=gOMServiceCosts[i];
++   ArraySort(sorted);
++   ulong p95=n>0?sorted[(int)MathFloor((n-1)*0.95)]:0;
++   ulong p99=n>0?sorted[(int)MathFloor((n-1)*0.99)]:0;
++   ulong maximum=n>0?sorted[n-1]:0;
++   string line=event+","+(string)s.bands.asofMsc+","+s.reason+","+(s.bands.ready?"1":"0")+","+
++      DoubleToString(s.bands.weight,8)+","+(string)s.bands.trades+","+
++      DoubleToString(s.bands.vwap,12)+","+DoubleToString(s.bands.sigma,12);
++   line+=","+DoubleToString(s.bands.upper1,12)+","+DoubleToString(s.bands.upper2,12)+","+
++      DoubleToString(s.bands.upper3,12)+","+DoubleToString(s.bands.lower1,12)+","+
++      DoubleToString(s.bands.lower2,12)+","+DoubleToString(s.bands.lower3,12)+","+
++      DoubleToString(gOMErrorMean,12)+","+DoubleToString(gOMErrorSigma,12)+","+
++      OMClassName(s.classification)+","+(string)s.dir+","+(s.eligible?"1":"0")+","+
++      (string)s.waveID+","+OMObserved(s.effort)+","+DoubleToString(s.netProgress,8)+","+
++      DoubleToString(s.grossPath,8)+","+DoubleToString(s.eventPath,8)+","+
++      OMObserved(s.pathEfficiency)+","+
++      (s.rawEfficiency==EMPTY_VALUE?"":DoubleToString(s.rawEfficiency,8))+","+
++      DoubleToString(s.residual,8)+","+DoubleToString(s.rejection,8)+","+
++      DoubleToString(s.velocity,8)+","+(string)s.attemptBands.asofMsc+","+
++      DoubleToString((s.bands.asofMsc-(long)gOMSessionOpen*1000)/1000.0,3)+","+
++      (gOMFirstReady>0?DoubleToString((gOMFirstReady-(long)gOMSessionOpen*1000)/1000.0,3):"")+","+
++      DoubleToString(gOMMinSigma,8)+","+DoubleToString(gOMMaxSigma,8);
++   for(int i=0;i<3;i++) line+=","+(string)gOMVisits[i];
++   for(int i=0;i<3;i++) line+=","+(gOMFirstVisit[i]>0?
++      DoubleToString((gOMFirstVisit[i]-(long)gOMSessionOpen*1000)/1000.0,3):"");
++   for(int i=0;i<4;i++) line+=","+(string)gOMZoneTrades[i];
++   for(int i=0;i<4;i++) line+=","+(string)gOMZoneMsc[i];
++   for(int i=0;i<4;i++) line+=","+DoubleToString(gOMZoneVolume[i],8);
++   line+=","+(string)p95+","+(string)p99+","+(string)maximum+","+
++      (gOMSource==1?"VOLUME_REAL":(gOMSource==2?"VOLUME_INTEGER":"UNAVAILABLE"))+","+
++      (string)gOMWaves.active.dir+","+(string)gOMWaves.active.startMsc+","+
++      (string)gOMWaves.active.recognitionMsc+","+(string)gOMWaves.active.peakMsc+","+
++      DoubleToString(gOMPreMinSigma,8)+","+DoubleToString(gOMPreMaxSigma,8)+","+
++      DoubleToString(gOMRelativeSigmaChange,12)+","+OMObserved(s.price)+",";
++   // Signed geometric residuals, not stops: negative means price is beyond
++   // the respective band on its current side. Attempt width and VWAP retain
++   // all six frozen original band levels by the exact same 1/2/3 formula.
++   for(int i=1;i<=3;i++)
++      line+=(s.bands.width>0?OMObserved(i*s.bands.width-MathAbs(s.price-s.bands.vwap)):"")+",";
++   line+=OMObserved(s.attemptBands.vwap)+","+OMObserved(s.attemptBands.sigma)+","+
++      OMObserved(s.attemptBands.width)+"\r\n";
++   FileWriteString(gOMLog,line);
++}
++// Shared commit path for fresh intervals and append-only current boundaries.
++// Input batch is validated before any analytical state mutation.
++bool OMApplyBatch(MqlTick &ticks[],int n,long from,long endExclusive)
++{
++   double volumes[];
++   if(ArrayResize(volumes,n)!=n) { OMFail("CHUNK_ALLOCATION_FAILED"); return false; }
++   int source=gOMSource; long previous=gOMLastTradeMsc;
++   for(int i=0;i<n;i++)
++   {
++      int observed;
++      if(ticks[i].time_msc<from || ticks[i].time_msc>=endExclusive ||
++         ticks[i].time_msc<previous || !OMTradeValid(ticks[i],volumes[i],observed))
++      { OMFail("TRADE_RECORD_INVALID",true); return false; }
++      if(source==0) source=observed;
++      if(source!=observed) { OMFail("VOLUME_SOURCE_MIXED",true); return false; }
++      long anchor=previous>0?previous:(long)gOMSessionOpen*1000;
++      if(ticks[i].time_msc-anchor>(long)Inp_FeedMaxGapSec*1000)
++      { OMFail("FEED_COVERAGE_GAP",true); return false; }
++      previous=ticks[i].time_msc;
++   }
++   if(previous==0 && endExclusive-(long)gOMSessionOpen*1000>(long)Inp_FeedMaxGapSec*1000)
++   { OMFail("OPENING_COVERAGE_NOT_PROVEN",true); return false; }
++   if(previous>0 && endExclusive-previous>(long)Inp_FeedMaxGapSec*1000)
++   { OMFail("TRAILING_FEED_GAP",true); return false; }
++   OMWeighted reference=gOMReference;
++   if(!OMReferenceBatch(ticks,n,reference))
++   { OMFail("INDEPENDENT_BATCH_INVALID",true); return false; }
++   OMConfig cfg=OMConfiguration();
++   for(int i=0;i<n;i++)
++   {
++      OMBands before=gOMLive;
++      if(!OMWeightedAdd(gOMWeighted,ticks[i].last,volumes[i]) ||
++         !OMWavePush(gOMWaves,ticks[i].last,volumes[i],ticks[i].time_msc,
++            cfg.reversal,cfg.eventStep,before))
++      { OMFail("INCREMENTAL_ARITHMETIC_INVALID",true); return false; }
++      gOMLastTradeMsc=ticks[i].time_msc; gOMLastPrice=ticks[i].last;
++      OMMetric(ticks[i],volumes[i],before);
++      // Intrachunk maps are numeric only until independent verification ends.
++      OMBuildBands(gOMWeighted,gBandMultiplier,ticks[i].time_msc,gOMLive);
++      gOMLive.ready=before.ready;
++   }
++   gOMReference=reference; gOMSource=source;
++   double refSigma=reference.weight>0?MathSqrt(reference.m2/reference.weight):0;
++   double sigma=gOMWeighted.weight>0?MathSqrt(gOMWeighted.m2/gOMWeighted.weight):0;
++   gOMErrorMean=MathAbs(reference.mean-gOMWeighted.mean)/gTickSize;
++   gOMErrorSigma=MathAbs(refSigma-sigma)/gTickSize;
++   if(reference.trades!=gOMWeighted.trades || MathAbs(reference.weight-gOMWeighted.weight)>MathMax(1.0,gOMWeighted.weight)*1e-12 ||
++      !OMNumber(gOMErrorMean) || !OMNumber(gOMErrorSigma) ||
++      gOMErrorMean>Inp_SigmaCheckToleranceTicks || gOMErrorSigma>Inp_SigmaCheckToleranceTicks)
++   { OMFail("INDEPENDENT_SIGMA_MISMATCH",true); return false; }
++   return true;
++}
++// Each chunk ends at/before the next M1 boundary. No future trade is consumed
++// before its closed-bar snapshot and independent variance verification.
++bool OMReadChunk(long endExclusive)
++{
++   MqlTick ticks[];
++   long from=gOMCursor;
++   ResetLastError(); int n=CopyTicksRange(Symbol(),ticks,COPY_TICKS_TRADE,
++      (ulong)from,(ulong)(endExclusive-1));
++   if(n<0 || GetLastError()!=0) { OMFail("TRADE_HISTORY_UNAVAILABLE"); return false; }
++   if(n>Inp_DataMaxChunkTrades) { OMFail("CHUNK_RECORD_BUDGET_EXCEEDED",true); return false; }
++   if(!OMApplyBatch(ticks,n,from,endExclusive)) return false;
++   if(n>0)
++   {
++      long boundary=ticks[n-1].time_msc; int start=n-1;
++      while(start>0 && ticks[start-1].time_msc==boundary) start--;
++      int count=n-start;
++      if(ArrayResize(gOMBoundary,count)!=count)
++      { OMFail("BOUNDARY_ALLOCATION_FAILED_AFTER_COMMIT",true); return false; }
++      for(int i=0;i<count;i++) gOMBoundary[i]=ticks[start+i];
++      gOMBoundaryMsc=boundary;
++   }
++   gOMCursor=endExclusive; gOMVerified=true;
++   OMUpdateReadiness(endExclusive-1);
++   if(endExclusive%60000==0)
++   {
++      OMCaptureThesis(endExclusive-1,gOMClosed);
++      gOMClosedBar=(datetime)(endExclusive/1000-60);
++      if(endExclusive>gOMAttachMsc) OMTelemetry("M1_CLOSED",gOMClosed);
++   }
++   int contextSeconds=PeriodSeconds(Inp_ContextTF);
++   if(contextSeconds>0 && endExclusive%((long)contextSeconds*1000)==0)
++   { gOMContext=gOMLive; gOMContextBar=(datetime)(endExclusive/1000-contextSeconds); }
++   return true;
++}
++void OMServiceStep()
++{
++   ulong begin=GetMicrosecondCount();
++   bool connected=TerminalInfoInteger(TERMINAL_CONNECTED)!=0 || MQLInfoInteger(MQL_TESTER)!=0;
++   if(!connected) { gOMConnected=false; OMFail("TERMINAL_DISCONNECTED"); return; }
++   MqlDateTime day; TimeToStruct(TimeTradeServer(),day);
++   int key=day.year*1000+day.day_of_year;
++   if(!gOMConnected || key!=gOMDay) OMReset();
++   gOMConnected=true;
++   if(gOMFault) return;
++   if(gOMSessionOpen==0 && !OMResolveSession()) return;
++   MqlTick latest;
++   if(!SymbolInfoTick(Symbol(),latest) || latest.time_msc<=0 ||
++      latest.time_msc>(long)TimeTradeServer()*1000+999 ||
++      TimeTradeServer()-(datetime)(latest.time_msc/1000)>Inp_FeedMaxGapSec)
++   { OMFail("BROKER_TICK_CLOCK_OR_FRESHNESS_INVALID"); return; }
++   if(latest.time_msc<(long)gOMSessionOpen*1000)
++   { OMFail("REGULAR_SESSION_NOT_OPEN"); return; }
++   long until=MathMin(latest.time_msc+1,(long)gOMSessionEnd*1000);
++   if(!SymbolIsSynchronized(Symbol()) ||
++      !SeriesInfoInteger(Symbol(),Inp_SignalTF,SERIES_SYNCHRONIZED))
++   { OMFail("SYMBOL_OR_M1_HISTORY_NOT_SYNCHRONIZED"); return; }
++   if(!OMVerifyBoundary()) return;
++   for(int work=0;work<Inp_DataChunksPerTimer && gOMCursor<until;work++)
++   {
++      long nextMinute=(gOMCursor/60000+1)*60000;
++      long end=MathMin(until,MathMin(gOMCursor+(long)Inp_DataChunkMsc,nextMinute));
++      if(!OMReadChunk(end)) break;
++      if(GetMicrosecondCount()-begin>=10000) break; // Soft CPU budget after bounded IO.
++   }
++   if(gOMCursor<until && !gOMFault && gOMReason=="BANDS_READY")
++      gOMReason="HISTORY_CATCHUP_PENDING";
++}
++void OMService()
++{
++   ulong begin=GetMicrosecondCount();
++   OMServiceStep();
++   ulong elapsed=GetMicrosecondCount()-begin;
++   gOMServiceCosts[gOMCostNext]=elapsed; gOMCostNext=(gOMCostNext+1)%128;
++   if(gOMCostCount<128) gOMCostCount++;
++   long now=(long)TimeTradeServer();
++   bool transition=gOMLastReportedReason!=gOMReason;
++   if(transition || now-gOMLastFlush>=30)
++   {
++      OMThesis live;
++      OMCaptureThesis(gOMCursor>0?gOMCursor-1:now*1000,live);
++      live.reason=gOMReason;
++      OMTelemetry(transition?"ENGINE_TRANSITION":"ENGINE_STATUS",live);
++      gOMLastReportedReason=gOMReason;
++   }
++   if(now-gOMLastFlush>=30)
++   {
++      gOMLastFlush=now;
++      if(gOMLog!=INVALID_HANDLE) FileFlush(gOMLog);
++   }
++}
++bool OMLiveReady(long tickMsc)
++{
++   if(gOMFault || !gOMVerified || !gOMLive.ready || gOMReason!="BANDS_READY" ||
++      tickMsc<=0 || gOMCursor<=tickMsc || tickMsc<gOMLastTradeMsc ||
++      tickMsc-gOMLastTradeMsc>(long)Inp_FeedMaxGapSec*1000) return false;
++   MqlTick latest;
++   if(!SymbolInfoTick(Symbol(),latest) || latest.time_msc!=tickMsc ||
++      latest.last!=gOMLastPrice) return false;
++   uint flags=TICK_FLAG_LAST|TICK_FLAG_VOLUME|TICK_FLAG_BUY|TICK_FLAG_SELL;
++   if((latest.flags&flags)!=0)
++   {
++      int count=ArraySize(gOMBoundary);
++      if(latest.time_msc!=gOMLastTradeMsc || count<=0 ||
++         !OMTickEqual(latest,gOMBoundary[count-1])) return false;
++   }
++   // Quote-only updates may retain independently verified Last evidence.
++   // An additional byte-identical same-ms print cannot be distinguished here;
++   // its multiplicity is reconciled by the next timer boundary read.
++   return true;
++}
++bool OMGetClosed(datetime signalBarOpen,OMThesis &out)
++{
++   out=gOMClosed;
++   long end=((long)signalBarOpen+PeriodSeconds(Inp_SignalTF))*1000;
++   if(PeriodSeconds(Inp_SignalTF)!=60 || gOMClosedBar!=signalBarOpen ||
++      end<=gOMAttachMsc || !out.bands.ready || gOMFault || !gOMVerified)
++      return false;
++   return true;
++}
++int OMRevalidate(const OMThesis &frozen,string &reason)
++{
++   reason="EVIDENCE_UNAVAILABLE";
++   MqlTick latest;
++   if(!SymbolInfoTick(Symbol(),latest) || !OMLiveReady(latest.time_msc)) return 0;
++   if(!frozen.detected || frozen.waveID==0 || frozen.evidenceMsc<=0) return 0;
++   if(frozen.dataEpoch!=gOMEpoch)
++   { reason="FROZEN_EVIDENCE_REVISED"; return -1; }
++   if(latest.time_msc<frozen.evidenceMsc) return 0;
++   if(gOMWaves.active.id!=frozen.waveID && gOMWaves.previous.id!=frozen.waveID)
++   { reason="WAVE_EVIDENCE_SUPERSEDED"; return -1; }
++   OMConfig cfg=OMConfiguration();
++   if(frozen.route=="CONT")
++   {
++      OMWave w=gOMWaves.active;
++      if(w.id!=frozen.waveID || w.dir!=frozen.dir)
++      { reason="CONT_WAVE_REVERSED"; return -1; }
++      double net=w.dir*(gOMLastPrice-w.start);
++      double drawdown=w.dir==1?w.high-gOMLastPrice:gOMLastPrice-w.low;
++      double eventNet=w.dir*(w.eventPrice-w.start);
++      if(w.eventPath<=0 || w.baseline<=0) return 0;
++      if(net<cfg.minCont || eventNet/w.eventPath<cfg.contEfficiency ||
++         w.volume/w.baseline<cfg.contEffort || drawdown>=cfg.eventStep)
++      { reason="CONT_PROGRESS_OR_SUSTAINMENT_LOST"; return -1; }
++   }
++   else if(frozen.route=="ABS")
++   {
++      double reclaimed=frozen.dir==1?frozen.testLow-gOMLastPrice:gOMLastPrice-frozen.testHigh;
++      if(reclaimed>=0) { reason="ABS_TEST_EXTREME_RECLAIMED"; return -1; }
++      OMWave w=gOMWaves.active;
++      if(w.id!=frozen.waveID) w=gOMWaves.previous;
++      OMDecision abs; if(!OMAbsEvidence(w,gOMLastPrice,latest.time_msc,cfg,abs))
++      { reason="ABS_REJECTION_LOST"; return -1; }
++   }
++   else return 0;
++   reason="THESIS_VALID";
++   return 1;
++}
++#endif

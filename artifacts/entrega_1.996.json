@@ -1,0 +1,67 @@
+{
+  "verified_at": "2026-11-10T20:34:56.572248-03:00",
+  "repository": "baalfoonseca-code/Bf",
+  "publication_branch": "codex/remora-matriz-objetiva",
+  "main_observed_before_publication": "dabaa1a57b54350b72a91ee821c965a7bbb6b455",
+  "source_functions_modified_during_packaging": false,
+  "files": {
+    "1995": {
+      "bytes": 378497,
+      "sha256": "2479ed8e5c9189438d787be1e804abbd95f9e1c06e01042e560251e64ef67fc5"
+    },
+    "RemoraScalper_MatrizObjetiva.mq5": {
+      "bytes": 303697,
+      "sha256": "8ab7d8b0476264ccfe37fddf43a4fb87c0967676dfb57648160e2f3b54aec2d9"
+    },
+    "include/ObjectiveMatrix.mqh": {
+      "bytes": 37384,
+      "sha256": "9bd44f13e61845be3c490a802035667da5ff0cb491f9b5a6bb127722b09a1b08"
+    },
+    "AUDITORIA_PREVIA.md": {
+      "bytes": 8174,
+      "sha256": "0000458726ee85978edcc6355b7319361bc212d9282b2044a063b3954984cd9c"
+    },
+    "REGRESSION_FINANCE.md": {
+      "bytes": 8284,
+      "sha256": "aee5edfb4ece77731e975d60f1d33111db04eada606acb78313d76d25d28eec8"
+    },
+    "INPUTS_DIFF.md": {
+      "bytes": 13190,
+      "sha256": "9a4e0f85bd3b47a1966dde4c2dc6b578f93685dfede3d7974bf5d6dfbf9e911f"
+    },
+    "TEST_CASES.md": {
+      "bytes": 10185,
+      "sha256": "aaafb75994d682d319417a4fbb115423fe3fb9a3b9d08b4cd47d15201f6f505e"
+    },
+    "CHANGELOG_CIRURGICO.md": {
+      "bytes": 10812,
+      "sha256": "2c719fee07550d670c63cc5dd17ec118ce6361784bf5e47186bf71c2dc10479a"
+    },
+    "DEPENDENCIAS_1.996.md": {
+      "bytes": 3983,
+      "sha256": "69253b4105e58e2c4ece61fe423e193828bf2f6013b6786e2e07f7d9d9b275cd"
+    }
+  },
+  "own_compile_dependencies": [
+    "RemoraScalper_MatrizObjetiva.mq5",
+    "include/ObjectiveMatrix.mqh"
+  ],
+  "terminal_standard_library_dependencies": [
+    "Trade/Trade.mqh",
+    "Trade/PositionInfo.mqh"
+  ],
+  "additional_own_compile_dependencies": [],
+  "native_compilation": {
+    "status": "COMPILACAO_NATIVA_NAO_VERIFICADA",
+    "reason": "MetaEditor/MetaTrader 5 not found",
+    "errors": null,
+    "warnings": null
+  },
+  "historical_test_result": {
+    "tests": 61,
+    "passed": 61,
+    "evidence": "artifacts/test-results.txt",
+    "native_MT5": false
+  },
+  "homologation": "NAO_HOMOLOGADO"
+}

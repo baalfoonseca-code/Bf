@@ -1,0 +1,5 @@
+Portable C++ common-source kernel, NOT MetaEditor or empirical feed proof.
+mean_error_ticks=3.4924596548080443e-11 sigma_error_ticks=3.9790393202565608e-14
+PASS weighted_reference
+raw_coarse=1 raw_bounce=0.166667 event_coarse=1 event_bounce=1
+PASS noise_refutation
