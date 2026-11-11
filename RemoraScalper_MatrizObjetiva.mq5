@@ -2448,7 +2448,8 @@ void OnTick()
  ManageBreakEven();
  if(hhmm>=Inp_StopEntryHHMM && armed.active) ResetArmedSignal();
  // OBJECTIVE_DATA_AFTER_FINANCE
- // No history collection on the tick path. Quotes wait for verified timer catch-up.
+ // Admit only a bounded live tail; bootstrap/recovery/backlog remain on timer.
+ OMAdmitMarketEvent();
  ObjectiveDecisionCycle();
 }
 

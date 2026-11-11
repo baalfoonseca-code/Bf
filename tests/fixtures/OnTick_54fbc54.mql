@@ -1,0 +1,16 @@
+void OnTick()
+{
+  if(TimeCurrent()<BacktestStart) return;
+  MqlDateTime day; TimeToStruct(TimeTradeServer(),day);
+  int key=day.year*1000+day.day_of_year;
+  if(key!=gDayKey) { gDayKey=key; DailyReset(); }
+ SyncAccountingState();
+ if(gOpenPos.active) UpdateMAEMFE();
+ int hhmm=day.hour*100+day.min;
+ ProcessEOD(hhmm);
+ ManageBreakEven();
+ if(hhmm>=Inp_StopEntryHHMM && armed.active) ResetArmedSignal();
+ // OBJECTIVE_DATA_AFTER_FINANCE
+ // No history collection on the tick path. Quotes wait for verified timer catch-up.
+ ObjectiveDecisionCycle();
+}

@@ -61,8 +61,14 @@ string DoubleToString(double value,int precision){std::ostringstream s;s<<std::f
 
 struct MqlTick {datetime time=0;double bid=0,ask=0,last=0;ulong volume=0;long time_msc=0;uint flags=0;double volume_real=0;};
 struct MqlDateTime {int year=0,mon=0,day=0,hour=0,min=0,sec=0,day_of_week=0,day_of_year=0;};
+struct MqlRates {datetime time=0;long real_volume=0;double high=0,low=0;};
 std::vector<MqlTick> gHistory;
-MqlTick gLatest;
+int gCopyCalls=0,gRangeCalls=0,gMaxCountRequest=0;
+bool gRatesUnavailable=false;
+long gExpectedBarVolume=-1;
+std::vector<string> gCallTrace;
+MqlTick gLatest,gReplacementTick;
+int gQuoteReadCount=0,gReplaceAtRead=0;
 datetime gNow=32401;
 int gCopyError=0,gLastError=0;
 bool gConnected=true,gTester=false,gSymbolSynchronized=true,gSeriesSynchronized=true;
@@ -75,7 +81,11 @@ double Inp_ABS_Effort=1.5,Inp_CONT_Effort=1.5;
 bool Inp_EnableAbsorption=true,Inp_EnableContinuation=true;
 int Inp_ContextTF=300,Inp_SignalTF=60;
 string Symbol(){return "WIN_TEST";}
-bool SymbolInfoTick(const string&,MqlTick&t){t=gLatest;return t.time_msc>0;}
+bool SymbolInfoTick(const string&,MqlTick&t){
+ ++gQuoteReadCount;
+ if(gReplaceAtRead>0 && gQuoteReadCount==gReplaceAtRead){gLatest=gReplacementTick;gHistory.push_back(gLatest);}
+ t=gLatest;return t.time_msc>0;
+}
 datetime TimeTradeServer(){return gNow;}
 datetime TimeLocal(){return gNow;}
 void TimeToStruct(datetime value,MqlDateTime&d){
@@ -101,9 +111,28 @@ bool SymbolInfoSessionTrade(const string&,ENUM_DAY_OF_WEEK,uint index,datetime&f
 void ResetLastError(){gLastError=0;}
 int GetLastError(){return gLastError;}
 int CopyTicksRange(const string&,std::vector<MqlTick>&out,int,ulong from,ulong to){
-    out.clear();if(gCopyError){gLastError=gCopyError;return -1;}
+    ++gRangeCalls;gCallTrace.push_back("history_range");out.clear();if(gCopyError){gLastError=gCopyError;return -1;}
     if(from>to){gLastError=1;return -1;}
     for(const auto&t:gHistory)if(ulong(t.time_msc)>=from&&ulong(t.time_msc)<=to)out.push_back(t);
+    return int(out.size());
+}
+int CopyTicks(const string&,std::vector<MqlTick>&out,int,ulong from,uint maximum){
+    ++gCopyCalls;gCallTrace.push_back("history_live");
+    gMaxCountRequest=std::max(gMaxCountRequest,int(maximum));out.clear();
+    if(gCopyError){gLastError=gCopyError;return -1;}
+    for(const auto&t:gHistory)if(ulong(t.time_msc)>=from){
+        if(out.size()>=maximum)break;out.push_back(t);
+    }
+    return int(out.size());
+}
+int CopyRates(const string&,int,datetime from,datetime to,std::vector<MqlRates>&out){
+    out.clear();if(gRatesUnavailable){gLastError=1;return -1;}
+    double total=0;bool any=false;
+    for(const auto&t:gHistory)if(t.time>=from&&t.time<=to){
+        total+=t.volume_real>0?t.volume_real:double(t.volume);any=true;
+    }
+    if(gExpectedBarVolume>=0){total=gExpectedBarVolume;any=total>0;}
+    if(any){MqlRates r;r.time=from;r.real_volume=long(total);out.push_back(r);}
     return int(out.size());
 }
 ulong GetMicrosecondCount(){static ulong sequence=0;return ++sequence;}
@@ -136,7 +165,8 @@ def translate_engine(source: str) -> str:
     # MQL resolves global functions regardless of declaration order; C++ needs
     # prototypes for the two forward calls introduced by boundary reconciliation.
     declarations = ("bool OMApplyBatch(std::vector<MqlTick> &ticks,int count,long from,long endExclusive);\n"
-                    "void OMUpdateReadiness(long asof);\n")
+                    "void OMUpdateReadiness(long asof);\n"
+                    "bool OMLiveReady(long tickMsc);\n")
     source = source.replace("bool OMClockHHMM(", declarations + "bool OMClockHHMM(", 1)
     return source
 

@@ -1,0 +1,129 @@
+{
+  "base_commit": "54fbc544a6dfdf190f010de18ff0d61099c00fb5",
+  "branch": "codex/remora-1996-integracao",
+  "recorded_at": "2026-11-11T00:14:00.562192-03:00",
+  "tests": {
+    "executed": 96,
+    "passed": 96,
+    "failed": 0,
+    "skipped": 0,
+    "financial": 15,
+    "entry": 11,
+    "engine": 15,
+    "runtime": 20,
+    "consolidation": 10,
+    "analytic_recovery_and_CONT_characterization": 16,
+    "execution_integration": 9
+  },
+  "protected_functions_literal": 253,
+  "inputs": 65,
+  "native_compilation": "COMPILACAO_NATIVA_NAO_VERIFICADA",
+  "native_errors": null,
+  "native_warnings": null,
+  "native_tools": {
+    "metaeditor64": null,
+    "terminal64": null,
+    "wine": null
+  },
+  "real_feed": "DADOS_INSUFICIENTES",
+  "CONT_drawdown_strategy": "PENDENTE_DECISAO_ESTRATEGICA; limiar original2ticks preservado",
+  "homologation": "NAO_HOMOLOGADO",
+  "files": {
+    "1995": {
+      "bytes": 378497,
+      "sha256": "2479ed8e5c9189438d787be1e804abbd95f9e1c06e01042e560251e64ef67fc5"
+    },
+    "AUDITORIA_PREVIA.md": {
+      "bytes": 11075,
+      "sha256": "aaeed206b70c054a9780bf68c001568447ec5666e3579843592f2d87ef643254"
+    },
+    "CHANGELOG_CIRURGICO.md": {
+      "bytes": 11729,
+      "sha256": "1acf381fd7a935dec3957b9fe7deb8465f5d710d8e38adf7ee0804fd037a0fd3"
+    },
+    "Comando_Codex_Remora_1995_Matriz_Objetiva_REVISADO.md": {
+      "bytes": 31616,
+      "sha256": "f1cb9e8e47ab9fbdec7b832952c2e6f6a1fdf196a24db9d98beaf8c83ebd70b9"
+    },
+    "Comando_Codex_Remora_1996_Integracao_Entrega.md": {
+      "bytes": 10326,
+      "sha256": "777a6f6b470874dcebadf2730c3ff779c3f300358ffcfe41eb1770c7664c3d89"
+    },
+    "DEPENDENCIAS_1.996.md": {
+      "bytes": 6712,
+      "sha256": "ead766748576445f1c69f548dd555b0438d80371c217d9d553b7eeb8bb3b756d"
+    },
+    "INPUTS_DIFF.md": {
+      "bytes": 13674,
+      "sha256": "c85d58dbf99f30833f680b2478cb924c43cfbaf568eab8091087cfc4c3d930b6"
+    },
+    "INTEGRACAO_ENTREGA_1.996.md": {
+      "bytes": 3897,
+      "sha256": "dcee867a8034e7379677fc5e28f34fac28a4479a11b26025190b59f7f1738136"
+    },
+    "README.md": {
+      "bytes": 8,
+      "sha256": "87c3311c8dd8ed62dec66f145fa8f64dddf7e083674ee98f320ae9b4ebe85335"
+    },
+    "REGRESSION_FINANCE.md": {
+      "bytes": 10561,
+      "sha256": "2d32c536a0ec7bd71edba478430a6f6bf022c2d155c63869290f651cf1f57736"
+    },
+    "RemoraScalper_1996_Completo.mq5": {
+      "bytes": 349987,
+      "sha256": "233e00531e8d8106e4bb9439e5409bad55b5cac2c1129e6947d54c48a154ced6"
+    },
+    "RemoraScalper_MatrizObjetiva.mq5": {
+      "bytes": 303715,
+      "sha256": "f192f610bbc01cdd0275bd8980f9439ef654287ebdc52747abd641f98f57efd8"
+    },
+    "TEST_CASES.md": {
+      "bytes": 11417,
+      "sha256": "bbeb592d78694ef79e0edfddc0ea4fc2b2aab9f33f5cc35eb6471feddccf30c7"
+    },
+    "include/ObjectiveMatrix.mqh": {
+      "bytes": 45647,
+      "sha256": "47993d4e9d501b43bb84afb6383a33a35cd7d2c663439f6e62a5f76761c66bc4"
+    },
+    "tests/fixtures/OnTick_54fbc54.mql": {
+      "bytes": 549,
+      "sha256": "5012a5c56575a32ad07a50acc79b012823b05d7649267425026c5b61cc038c3e"
+    },
+    "tests/mql_engine_harness.py": {
+      "bytes": 9092,
+      "sha256": "1a0643a54deb9531ef5329b9e4a3841b86a62ff576da5b0d7eb000c8333ef225"
+    },
+    "tests/test_analytic_recovery.py": {
+      "bytes": 6843,
+      "sha256": "b08deb74a3cd9988f2dc7a3e5e3f55baa6e9acb02454b22f30d350c8d87ffafa"
+    },
+    "tests/test_consolidated_delivery.py": {
+      "bytes": 5958,
+      "sha256": "bf4cfc599e526f24c646cb195c443a32ee9571a984aa850e81fde955605ca864"
+    },
+    "tests/test_entry_contract.py": {
+      "bytes": 10511,
+      "sha256": "10b216e4cb9eaed4aa58ec0a9a0019dc2339362f90ce208f405834cf6315f09d"
+    },
+    "tests/test_execution_integration.py": {
+      "bytes": 10103,
+      "sha256": "ed86afbc2b375b0ca14f85620d566a448eac26db437f67c2da926b8471b82a7d"
+    },
+    "tests/test_financial_invariants.py": {
+      "bytes": 21933,
+      "sha256": "a4d8ce65272f4e04dec92630694d8601747b807b5aa4fab6fe5221367aaa9a10"
+    },
+    "tests/test_objective_engine.py": {
+      "bytes": 16971,
+      "sha256": "9b2cf4490f432203cf531025b5fd3d4640f402be33bdd4ec770a3a66fc61fd44"
+    },
+    "tests/test_runtime_contract.py": {
+      "bytes": 10657,
+      "sha256": "ad8b4c0636b89d50e05bebfae52006f9e8948cc90638cf81e33c46385c36ca1f"
+    },
+    "tools/build_consolidated.py": {
+      "bytes": 3956,
+      "sha256": "6a870e3bbd5481efa5f7dbff18edbe22559f0c57c2c9505fa36af17918b1289b"
+    }
+  }
+}

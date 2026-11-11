@@ -251,6 +251,15 @@ datetime gOMSessionOpen=0,gOMSessionEnd=0,gOMClosedBar=0,gOMContextBar=0;
 long gOMCursor=0,gOMLastTradeMsc=0,gOMAttachMsc=0,gOMBoundaryMsc=0;
 MqlTick gOMBoundary[];
 bool gOMFault=false,gOMConnected=false,gOMVerified=false;
+// Analytical recovery only. No position, request or financial journal is touched.
+bool gOMRecoveryPending=false,gOMRecovering=false,gOMIntervalVerified=false;
+long gOMRecoveryMinClose=0;
+double gOMRecoveryBarVolume=0;
+ulong gOMLiveCalls=0,gOMLiveAdmitted=0,gOMLiveWaits=0,gOMLiveLastUs=0,gOMLiveMaxUs=0;
+long gOMLiveLagMsc=0;
+string gOMLiveWaitReason="NOT_OBSERVED";
+const int OM_LIVE_MAX_RECORDS=256; // Engineering work budget, not an entry threshold.
+const long OM_LIVE_MAX_LAG_MSC=1000;
 int gOMSource=0,gOMDay=-1;
 ulong gOMEpoch=0;
 string gOMReason="NOT_INITIALIZED",gOMLastReportedReason="";
@@ -311,6 +320,10 @@ void OMReset()
    ZeroMemory(gOMLive); ZeroMemory(gOMContext); ZeroMemory(gOMClosed);
    gOMSessionOpen=0; gOMSessionEnd=0; gOMCursor=0; gOMLastTradeMsc=0;
    gOMClosedBar=0; gOMContextBar=0; gOMBoundaryMsc=0; ArrayResize(gOMBoundary,0);
+   gOMRecoveryPending=false; gOMRecovering=false; gOMIntervalVerified=false;
+   gOMRecoveryMinClose=0; gOMRecoveryBarVolume=0;
+   gOMLiveCalls=0; gOMLiveAdmitted=0; gOMLiveWaits=0;
+   gOMLiveLastUs=0; gOMLiveMaxUs=0; gOMLiveLagMsc=0; gOMLiveWaitReason="NOT_OBSERVED";
    gOMFault=false; gOMVerified=false; gOMSource=0; gOMReason="SESSION_NOT_RESOLVED";
    gOMLastPrice=0; gOMErrorMean=0; gOMErrorSigma=0; gOMFirstReady=0;
    gOMLastMetricMsc=0; gOMPreviousZone=-1; gOMMinSigma=0; gOMMaxSigma=0;
@@ -329,12 +342,24 @@ void OMReset()
          (string)GetMicrosecondCount()+".csv";
       gOMLog=FileOpen(path,FILE_WRITE|FILE_TXT|FILE_ANSI|FILE_SHARE_READ);
       if(gOMLog!=INVALID_HANDLE)
-         FileWriteString(gOMLog,"EVENT,ASOF_MSC,REASON,READY,W,TRADES,VWAP,SIGMA,B1_UP,B2_UP,B3_UP,B1_DN,B2_DN,B3_DN,MEAN_ERROR_TICKS,SIGMA_ERROR_TICKS,CLASSIFICATION,DIRECTION,LOCATION_ELIGIBLE,WAVE_ID,EFFORT,NET,RAW_PATH,EVENT_PATH,EVENT_EFFICIENCY,RAW_EFFICIENCY,EVENT_RESIDUAL,REJECTION,VOLUME_PER_SEC,ATTEMPT_ASOF,ELAPSED_SESSION_SEC,FIRST_READY_SEC,SIGMA_MIN,SIGMA_MAX,B1_VISITS,B2_VISITS,B3_VISITS,B1_FIRST_SEC,B2_FIRST_SEC,B3_FIRST_SEC,Z0_TRADES,Z1_TRADES,Z2_TRADES,Z3_TRADES,Z0_MSC,Z1_MSC,Z2_MSC,Z3_MSC,Z0_VOLUME,Z1_VOLUME,Z2_VOLUME,Z3_VOLUME,SERVICE_P95_US,SERVICE_P99_US,SERVICE_MAX_US,VOLUME_SOURCE,ACTIVE_WAVE_DIRECTION,ACTIVE_START_MSC,ACTIVE_RECOGNITION_MSC,ACTIVE_PEAK_MSC,PRE_READY_SIGMA_MIN,PRE_READY_SIGMA_MAX,RELATIVE_SIGMA_CHANGE,LAST_PRICE,SIGNED_DISTANCE_TO_B1,SIGNED_DISTANCE_TO_B2,SIGNED_DISTANCE_TO_B3,ATTEMPT_VWAP,ATTEMPT_SIGMA,ATTEMPT_WIDTH\r\n");
+         FileWriteString(gOMLog,"EVENT,ASOF_MSC,REASON,READY,W,TRADES,VWAP,SIGMA,B1_UP,B2_UP,B3_UP,B1_DN,B2_DN,B3_DN,MEAN_ERROR_TICKS,SIGMA_ERROR_TICKS,CLASSIFICATION,DIRECTION,LOCATION_ELIGIBLE,WAVE_ID,EFFORT,NET,RAW_PATH,EVENT_PATH,EVENT_EFFICIENCY,RAW_EFFICIENCY,EVENT_RESIDUAL,REJECTION,VOLUME_PER_SEC,ATTEMPT_ASOF,ELAPSED_SESSION_SEC,FIRST_READY_SEC,SIGMA_MIN,SIGMA_MAX,B1_VISITS,B2_VISITS,B3_VISITS,B1_FIRST_SEC,B2_FIRST_SEC,B3_FIRST_SEC,Z0_TRADES,Z1_TRADES,Z2_TRADES,Z3_TRADES,Z0_MSC,Z1_MSC,Z2_MSC,Z3_MSC,Z0_VOLUME,Z1_VOLUME,Z2_VOLUME,Z3_VOLUME,SERVICE_P95_US,SERVICE_P99_US,SERVICE_MAX_US,VOLUME_SOURCE,ACTIVE_WAVE_DIRECTION,ACTIVE_START_MSC,ACTIVE_RECOGNITION_MSC,ACTIVE_PEAK_MSC,PRE_READY_SIGMA_MIN,PRE_READY_SIGMA_MAX,RELATIVE_SIGMA_CHANGE,LAST_PRICE,SIGNED_DISTANCE_TO_B1,SIGNED_DISTANCE_TO_B2,SIGNED_DISTANCE_TO_B3,ATTEMPT_VWAP,ATTEMPT_SIGMA,ATTEMPT_WIDTH,LIVE_CALLS,LIVE_ADMITTED,LIVE_WAITS,LIVE_LAST_US,LIVE_MAX_US,LIVE_LAG_MSC,LIVE_WAIT_REASON\r\n");
    }
 }
 void OMFail(string reason,bool permanent=false)
 {
    gOMReason=reason; gOMLive.ready=false; gOMVerified=false;
+   bool recoverable=reason=="FEED_COVERAGE_GAP" || reason=="TRAILING_FEED_GAP" ||
+      reason=="OPENING_COVERAGE_NOT_PROVEN" || reason=="TRADE_HISTORY_UNAVAILABLE" ||
+      reason=="RECOVERY_HISTORY_UNSTABLE" || reason=="RECOVERY_BAR_VOLUME_MISMATCH" ||
+      reason=="RECOVERY_BAR_HISTORY_UNAVAILABLE";
+   if(recoverable)
+   {
+      // A gap is a suspicion, not proof of corrupt history. Withdraw evidence
+      // immediately; only the timer may restart and verify the complete session.
+      if(!gOMRecoveryPending) gOMEpoch++;
+      gOMRecoveryPending=true;
+      ZeroMemory(gOMClosed); gOMClosedBar=0; ZeroMemory(gOMContext);
+   }
    if(permanent) gOMFault=true;
 }
 bool OMResolveSession()
@@ -473,6 +498,8 @@ void OMUpdateReadiness(long asof)
    if(asof-(long)gOMSessionOpen*1000<(long)Inp_BandsWarmupSec*1000)
    { OMFail("BANDS_WARMUP"); return; }
    if(!gOMVerified || gOMFault) { OMFail("INDEPENDENT_CHECK_NOT_READY"); return; }
+   if(gOMRecovering || gOMRecoveryPending)
+   { gOMLive.ready=false; gOMReason="ANALYTICAL_RECOVERY_REBUILD"; return; }
    gOMLive.ready=true; gOMReason="BANDS_READY";
    if(gOMFirstReady==0) gOMFirstReady=asof;
    if(gOMMinSigma==0 || gOMLive.sigma<gOMMinSigma) gOMMinSigma=gOMLive.sigma;
@@ -584,7 +611,9 @@ void OMTelemetry(string event,const OMThesis &s)
    for(int i=1;i<=3;i++)
       line+=(s.bands.width>0?OMObserved(i*s.bands.width-MathAbs(s.price-s.bands.vwap)):"")+",";
    line+=OMObserved(s.attemptBands.vwap)+","+OMObserved(s.attemptBands.sigma)+","+
-      OMObserved(s.attemptBands.width)+"\r\n";
+      OMObserved(s.attemptBands.width)+","+(string)gOMLiveCalls+","+
+      (string)gOMLiveAdmitted+","+(string)gOMLiveWaits+","+(string)gOMLiveLastUs+","+
+      (string)gOMLiveMaxUs+","+(string)gOMLiveLagMsc+","+gOMLiveWaitReason+"\r\n";
    FileWriteString(gOMLog,line);
 }
 // Shared commit path for fresh intervals and append-only current boundaries.
@@ -603,13 +632,16 @@ bool OMApplyBatch(MqlTick &ticks[],int n,long from,long endExclusive)
       if(source==0) source=observed;
       if(source!=observed) { OMFail("VOLUME_SOURCE_MIXED",true); return false; }
       long anchor=previous>0?previous:(long)gOMSessionOpen*1000;
-      if(ticks[i].time_msc-anchor>(long)Inp_FeedMaxGapSec*1000)
+      if(ticks[i].time_msc-anchor>(long)Inp_FeedMaxGapSec*1000 &&
+         !(gOMRecovering && gOMIntervalVerified))
       { OMFail("FEED_COVERAGE_GAP",true); return false; }
       previous=ticks[i].time_msc;
    }
-   if(previous==0 && endExclusive-(long)gOMSessionOpen*1000>(long)Inp_FeedMaxGapSec*1000)
+   if(previous==0 && endExclusive-(long)gOMSessionOpen*1000>(long)Inp_FeedMaxGapSec*1000 &&
+      !(gOMRecovering && gOMIntervalVerified))
    { OMFail("OPENING_COVERAGE_NOT_PROVEN",true); return false; }
-   if(previous>0 && endExclusive-previous>(long)Inp_FeedMaxGapSec*1000)
+   if(previous>0 && endExclusive-previous>(long)Inp_FeedMaxGapSec*1000 &&
+      !(gOMRecovering && gOMIntervalVerified))
    { OMFail("TRAILING_FEED_GAP",true); return false; }
    OMWeighted reference=gOMReference;
    if(!OMReferenceBatch(ticks,n,reference))
@@ -622,6 +654,7 @@ bool OMApplyBatch(MqlTick &ticks[],int n,long from,long endExclusive)
          !OMWavePush(gOMWaves,ticks[i].last,volumes[i],ticks[i].time_msc,
             cfg.reversal,cfg.eventStep,before))
       { OMFail("INCREMENTAL_ARITHMETIC_INVALID",true); return false; }
+      if(gOMRecovering) gOMRecoveryBarVolume+=volumes[i];
       gOMLastTradeMsc=ticks[i].time_msc; gOMLastPrice=ticks[i].last;
       OMMetric(ticks[i],volumes[i],before);
       // Intrachunk maps are numeric only until independent verification ends.
@@ -639,16 +672,10 @@ bool OMApplyBatch(MqlTick &ticks[],int n,long from,long endExclusive)
    { OMFail("INDEPENDENT_SIGMA_MISMATCH",true); return false; }
    return true;
 }
-// Each chunk ends at/before the next M1 boundary. No future trade is consumed
-// before its closed-bar snapshot and independent variance verification.
-bool OMReadChunk(long endExclusive)
+// Commit only one causal interval, never extending beyond an M1 boundary.
+bool OMCommitBatch(MqlTick &ticks[],int n,long endExclusive)
 {
-   MqlTick ticks[];
    long from=gOMCursor;
-   ResetLastError(); int n=CopyTicksRange(Symbol(),ticks,COPY_TICKS_TRADE,
-      (ulong)from,(ulong)(endExclusive-1));
-   if(n<0 || GetLastError()!=0) { OMFail("TRADE_HISTORY_UNAVAILABLE"); return false; }
-   if(n>Inp_DataMaxChunkTrades) { OMFail("CHUNK_RECORD_BUDGET_EXCEEDED",true); return false; }
    if(!OMApplyBatch(ticks,n,from,endExclusive)) return false;
    if(n>0)
    {
@@ -659,6 +686,24 @@ bool OMReadChunk(long endExclusive)
       { OMFail("BOUNDARY_ALLOCATION_FAILED_AFTER_COMMIT",true); return false; }
       for(int i=0;i<count;i++) gOMBoundary[i]=ticks[start+i];
       gOMBoundaryMsc=boundary;
+   }
+   if(gOMRecovering && endExclusive%60000==0)
+   {
+      // Independent broker M1 volume catches a gap whose known trades are
+      // absent from tick history. Stable emptiness alone is never enough.
+      MqlRates rates[];
+      ResetLastError();
+      int bars=CopyRates(Symbol(),Inp_SignalTF,(datetime)(endExclusive/1000-60),
+                         (datetime)(endExclusive/1000-1),rates);
+      if(GetLastError()!=0 || bars<0 || bars>1)
+      { OMFail("RECOVERY_BAR_HISTORY_UNAVAILABLE"); return false; }
+      double expected=bars==1?(double)rates[0].real_volume:0;
+      if((bars==1 && rates[0].time!=(datetime)(endExclusive/1000-60)) ||
+         !OMNumber(expected) || expected<0 ||
+         MathAbs(expected-gOMRecoveryBarVolume)>MathMax(1.0,expected)*1e-10)
+      { OMFail("RECOVERY_BAR_VOLUME_MISMATCH"); return false; }
+      // Both synchronized broker APIs agree. This is not exchange-wide proof.
+      gOMRecoveryBarVolume=0;
    }
    gOMCursor=endExclusive; gOMVerified=true;
    OMUpdateReadiness(endExclusive-1);
@@ -673,6 +718,108 @@ bool OMReadChunk(long endExclusive)
    { gOMContext=gOMLive; gOMContextBar=(datetime)(endExclusive/1000-contextSeconds); }
    return true;
 }
+
+// Each chunk has a time and record budget. Recovery double-reads each interval
+// and compares the entire ordered multiplicity before independent math checks.
+bool OMReadChunk(long endExclusive)
+{
+   MqlTick ticks[];
+   long from=gOMCursor;
+   ResetLastError(); int n=CopyTicksRange(Symbol(),ticks,COPY_TICKS_TRADE,
+      (ulong)from,(ulong)(endExclusive-1));
+   if(n<0 || GetLastError()!=0) { OMFail("TRADE_HISTORY_UNAVAILABLE"); return false; }
+   if(n>Inp_DataMaxChunkTrades) { OMFail("CHUNK_RECORD_BUDGET_EXCEEDED",true); return false; }
+   gOMIntervalVerified=false;
+   if(gOMRecovering)
+   {
+      MqlTick again[];
+      ResetLastError(); int count=CopyTicksRange(Symbol(),again,COPY_TICKS_TRADE,
+         (ulong)from,(ulong)(endExclusive-1));
+      if(count!=n || GetLastError()!=0)
+      { OMFail("RECOVERY_HISTORY_UNSTABLE"); return false; }
+      for(int i=0;i<n;i++)
+         if(!OMTickEqual(ticks[i],again[i]))
+         { OMFail("RECOVERY_HISTORY_UNSTABLE"); return false; }
+      gOMIntervalVerified=true;
+   }
+   bool committed=OMCommitBatch(ticks,n,endExclusive);
+   gOMIntervalVerified=false;
+   return committed;
+}
+
+// One bounded admission on the tick path, after financial protection. No
+// session reconstruction here: lag>1s or >256 returned records waits for timer.
+bool OMAdmitMarketEventStep()
+{
+   gOMLiveWaitReason="ANALYTICAL_DATA_NOT_READY";
+   if(gOMFault || gOMRecoveryPending || gOMRecovering || !gOMVerified ||
+      !gOMLive.ready || gOMCursor<=0 || gOMSessionOpen==0) return false;
+   if(!SymbolIsSynchronized(Symbol()) ||
+      !SeriesInfoInteger(Symbol(),Inp_SignalTF,SERIES_SYNCHRONIZED)) return false;
+   MqlTick latest;
+   if(!SymbolInfoTick(Symbol(),latest) || latest.time_msc<=0 ||
+      latest.time_msc>(long)TimeTradeServer()*1000+999 ||
+      TimeTradeServer()-(datetime)(latest.time_msc/1000)>Inp_FeedMaxGapSec) return false;
+   long target=MathMin(latest.time_msc+1,(long)gOMSessionEnd*1000);
+   gOMLiveLagMsc=MathMax(0,target-gOMCursor);
+   if(target<gOMCursor || target-gOMCursor>OM_LIVE_MAX_LAG_MSC)
+   { gOMLiveWaitReason="LIVE_BACKLOG_REQUIRES_TIMER"; return false; }
+   int old=ArraySize(gOMBoundary);
+   if(old>OM_LIVE_MAX_RECORDS) { gOMLiveWaitReason="LIVE_BOUNDARY_REQUIRES_TIMER"; return false; }
+   long from=gOMBoundaryMsc>0?gOMBoundaryMsc:gOMCursor;
+   MqlTick observed[];
+   ResetLastError();
+   int count=CopyTicks(Symbol(),observed,COPY_TICKS_TRADE,(ulong)from,OM_LIVE_MAX_RECORDS+1);
+   if(count<0 || GetLastError()!=0) { OMFail("TRADE_HISTORY_UNAVAILABLE"); return false; }
+   int n=0;
+   while(n<count && observed[n].time_msc<target) n++;
+   if(n>OM_LIVE_MAX_RECORDS) { gOMLiveWaitReason="LIVE_RECORD_BUDGET"; return false; } // no partial batch
+   if(n<old) { OMFail("BOUNDARY_MULTIPLICITY_REVISED_REBUILD_REQUIRED",true); return false; }
+   for(int i=0;i<old;i++)
+      if(!OMTickEqual(observed[i],gOMBoundary[i]))
+      { OMFail("BOUNDARY_PREFIX_REVISED_REBUILD_REQUIRED",true); return false; }
+   int cursor=old;
+   while(cursor<n && observed[cursor].time_msc==gOMBoundaryMsc) cursor++;
+   if(cursor>old)
+   {
+      MqlTick suffix[]; int amount=cursor-old;
+      if(ArrayResize(suffix,amount)!=amount) return false;
+      for(int i=0;i<amount;i++) suffix[i]=observed[old+i];
+      if(!OMApplyBatch(suffix,amount,gOMBoundaryMsc,gOMBoundaryMsc+1)) return false;
+      if(gOMClosedBar>0 && gOMClosed.bands.asofMsc>=gOMBoundaryMsc)
+      { gOMEpoch++; ZeroMemory(gOMClosed); gOMClosedBar=0; }
+      if(ArrayResize(gOMBoundary,cursor)!=cursor)
+      { OMFail("BOUNDARY_ALLOCATION_FAILED_AFTER_COMMIT",true); return false; }
+      for(int i=0;i<cursor;i++) gOMBoundary[i]=observed[i];
+   }
+   if(cursor<n && observed[cursor].time_msc<gOMCursor)
+   { OMFail("OBSERVED_INTERVAL_REVISED_REBUILD_REQUIRED",true); return false; }
+   // A <=1s tail crosses at most one minute boundary. Snapshot before next M1.
+   for(int part=0;part<2 && gOMCursor<target;part++)
+   {
+      long end=MathMin(target,(gOMCursor/60000+1)*60000);
+      int start=cursor;
+      while(cursor<n && observed[cursor].time_msc<end) cursor++;
+      int amount=cursor-start; MqlTick batch[];
+      if(ArrayResize(batch,amount)!=amount) return false;
+      for(int i=0;i<amount;i++) batch[i]=observed[start+i];
+      if(!OMCommitBatch(batch,amount,end)) return false;
+   }
+   gOMVerified=true; OMUpdateReadiness(gOMCursor-1);
+   return OMLiveReady(latest.time_msc);
+}
+
+bool OMAdmitMarketEvent()
+{
+   ulong begin=GetMicrosecondCount(); gOMLiveCalls++;
+   bool admitted=OMAdmitMarketEventStep();
+   gOMLiveLastUs=GetMicrosecondCount()-begin;
+   if(gOMLiveLastUs>gOMLiveMaxUs) gOMLiveMaxUs=gOMLiveLastUs;
+   if(admitted) { gOMLiveAdmitted++; gOMLiveWaitReason="LIVE_CAUGHT_UP"; }
+   else gOMLiveWaits++;
+   return admitted;
+}
+
 void OMServiceStep()
 {
    ulong begin=GetMicrosecondCount();
@@ -682,6 +829,14 @@ void OMServiceStep()
    int key=day.year*1000+day.day_of_year;
    if(!gOMConnected || key!=gOMDay) OMReset();
    gOMConnected=true;
+   if(gOMRecoveryPending)
+   {
+      if(!SymbolIsSynchronized(Symbol()) ||
+         !SeriesInfoInteger(Symbol(),Inp_SignalTF,SERIES_SYNCHRONIZED)) return;
+      OMReset(); gOMRecovering=true;
+      gOMRecoveryMinClose=((long)TimeTradeServer()/60+1)*60000;
+      gOMReason="ANALYTICAL_RECOVERY_REBUILD";
+   }
    if(gOMFault) return;
    if(gOMSessionOpen==0 && !OMResolveSession()) return;
    MqlTick latest;
@@ -703,7 +858,19 @@ void OMServiceStep()
       if(!OMReadChunk(end)) break;
       if(GetMicrosecondCount()-begin>=10000) break; // Soft CPU budget after bounded IO.
    }
-   if(gOMCursor<until && !gOMFault && gOMReason=="BANDS_READY")
+   if(gOMRecovering && !gOMRecoveryPending && !gOMFault)
+   {
+      if(gOMCursor>=until && gOMCursor>=gOMRecoveryMinClose)
+      {
+         // Require a freshly closed, volume-verified M1 and catch-up to NOW.
+         // Do not expose any signal reconstructed before recovery completed.
+         gOMRecovering=false; gOMAttachMsc=latest.time_msc;
+         gOMEpoch++; ZeroMemory(gOMClosed); gOMClosedBar=0;
+         ZeroMemory(gOMContext); OMUpdateReadiness(gOMCursor-1);
+      }
+      else gOMReason="ANALYTICAL_RECOVERY_REBUILD";
+   }
+   else if(gOMCursor<until && !gOMFault && gOMReason=="BANDS_READY")
       gOMReason="HISTORY_CATCHUP_PENDING";
 }
 void OMService()
@@ -731,7 +898,7 @@ void OMService()
 }
 bool OMLiveReady(long tickMsc)
 {
-   if(gOMFault || !gOMVerified || !gOMLive.ready || gOMReason!="BANDS_READY" ||
+   if(gOMFault || gOMRecoveryPending || gOMRecovering || !gOMVerified || !gOMLive.ready || gOMReason!="BANDS_READY" ||
       tickMsc<=0 || gOMCursor<=tickMsc || tickMsc<gOMLastTradeMsc ||
       tickMsc-gOMLastTradeMsc>(long)Inp_FeedMaxGapSec*1000) return false;
    MqlTick latest;
@@ -754,18 +921,18 @@ bool OMGetClosed(datetime signalBarOpen,OMThesis &out)
    out=gOMClosed;
    long end=((long)signalBarOpen+PeriodSeconds(Inp_SignalTF))*1000;
    if(PeriodSeconds(Inp_SignalTF)!=60 || gOMClosedBar!=signalBarOpen ||
-      end<=gOMAttachMsc || !out.bands.ready || gOMFault || !gOMVerified)
+      end<=gOMAttachMsc || !out.bands.ready || gOMFault || gOMRecoveryPending || gOMRecovering || !gOMVerified)
       return false;
    return true;
 }
 int OMRevalidate(const OMThesis &frozen,string &reason)
 {
    reason="EVIDENCE_UNAVAILABLE";
-   MqlTick latest;
-   if(!SymbolInfoTick(Symbol(),latest) || !OMLiveReady(latest.time_msc)) return 0;
    if(!frozen.detected || frozen.waveID==0 || frozen.evidenceMsc<=0) return 0;
    if(frozen.dataEpoch!=gOMEpoch)
    { reason="FROZEN_EVIDENCE_REVISED"; return -1; }
+   MqlTick latest;
+   if(!SymbolInfoTick(Symbol(),latest) || !OMLiveReady(latest.time_msc)) return 0;
    if(latest.time_msc<frozen.evidenceMsc) return 0;
    if(gOMWaves.active.id!=frozen.waveID && gOMWaves.previous.id!=frozen.waveID)
    { reason="WAVE_EVIDENCE_SUPERSEDED"; return -1; }

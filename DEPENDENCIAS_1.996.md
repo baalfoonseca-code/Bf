@@ -47,3 +47,22 @@ Os testes portáteis em `tests/` usam Python 3 e g++ com C++17, sem pacotes Pyth
 **COMPILACAO_NATIVA_NAO_VERIFICADA — compilação nativa pendente.** MetaEditor/MetaTrader 5 não foram encontrados neste ambiente Linux. Portanto, não há quantidade real de erros ou avisos nativos para informar; não se declara zero. A estrutura e as dependências próprias foram conferidas, mas a aceitação pelo compilador só poderá ser confirmada no MetaEditor.
 
 A candidata permanece **NÃO HOMOLOGADA**. A execução e os testes operacionais dependem do terminal, das especificações de contrato/sessão da corretora e de dados reais adequados de WIN/WDO. Esses requisitos de execução não implicam credenciais adicionais para compilar.
+
+
+## Revisão de integração — escopo posterior à entrega publicada
+
+HEAD de partida conferido: `54fbc544a6dfdf190f010de18ff0d61099c00fb5`, na branch `codex/remora-matriz-objetiva`. O diff desde `9ebc9eedd2243c44601efd9dfb125bc4fcacb55e` acrescentava apenas `RemoraScalper_1996_CONSOLIDADO.mq5`, com a expansão literal do módulo e dois comentários. Esse arquivo histórico permanece intocado. A integração atual usa a branch própria `codex/remora-1996-integracao` e o comando `Comando_Codex_Remora_1996_Integracao_Entrega.md` fornecido pelo usuário.
+
+As seções anteriores registram a primeira entrega. A evidência corrente desta revisão fica em `artifacts/integracao_1996/`; os resultados e ZIPs anteriores foram preservados como históricos, sem sobrescrita.
+
+### Entrega corrente consolidada e modular
+
+Para copiar o código inteiro ao MetaEditor, use **`RemoraScalper_1996_Completo.mq5`**. Ele tem 349987 bytes e SHA-256 `233e00531e8d8106e4bb9439e5409bad55b5cac2c1129e6947d54c48a154ced6`. A incorporação é literal: os testes verificam todos os corpos, inputs e ausência de duplicação. O arquivo requer apenas os includes padrão `Trade\Trade.mqh` e `Trade\PositionInfo.mqh` do MetaTrader5, com suas dependências padrão.
+
+A alternativa modular continua `RemoraScalper_MatrizObjetiva.mq5` e `include/ObjectiveMatrix.mqh`, preservando a pasta relativa. Hashes desta revisão: principal `f192f610bbc01cdd0275bd8980f9439ef654287ebdc52747abd641f98f57efd8`; módulo `47993d4e9d501b43bb84afb6383a33a35cd7d2c663439f6e62a5f76761c66bc4`. Os hashes da tabela anterior correspondem à entrega histórica inicial.
+
+Builder auditável: `python3 tools/build_consolidated.py`; conferência sem escrever: `python3 tools/build_consolidated.py --check`. A geração não altera os fontes nem o controle `1995`. Testes portáteis: Python3 e g++C++17, biblioteca padrão, sem pacotes Python externos. O fixture histórico do callback está incluído; os testes não exigem acesso GitHub para consultar a revisão passada.
+
+Pacote corrente: `artifacts/remora_1996_integracao_completa.zip`. Ele contém a versão única, os fontes modulares da mesma revisão, dependências próprias, testes/fixtures, builder, comando, diff, relatórios e hashes. O consolidado histórico `RemoraScalper_1996_CONSOLIDADO.mq5` não é usado como fonte da entrega nova nem misturado ao ZIP.
+
+No terminal, coloque o `.mq5` consolidado em uma pasta de pesquisa de `MQL5/Experts`, abra e compile com F7. Para a versão modular, mantenha a subpasta `include` ao lado do principal. Não executar simultaneamente as duas apresentações do mesmo EA. Nenhum `.ex5` foi certificado; compilação nativa permanece pendente e a candidata NÃO HOMOLOGADA.

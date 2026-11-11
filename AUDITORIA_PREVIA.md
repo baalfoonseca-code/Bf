@@ -50,3 +50,18 @@ No `OnTick` original, `SyncAccountingState`, `UpdateMAEMFE`, `ProcessEOD` e `Man
 A comparação estática deve comprovar identidade do núcleo protegido e inputs, e inspecionar explicitamente os pontos de integração. Testes numéricos e adversariais devem executar os cálculos novos, não meras réplicas que sempre passam. Compilação C++ de um kernel, quando usada, não é compilação MQL5. Replay/Strategy Tester, reinícios operacionais, performance com feed real e resultados financeiros exigem o terminal e dados adequados.
 
 O ambiente Linux inspecionado não possui MetaEditor/MetaTrader 5. PDF e referências históricas citadas não estão no checkout e são secundários. Situação inicial: `COMPILACAO_NATIVA_NAO_VERIFICADA`, `DADOS_INSUFICIENTES` para microestrutura real e candidata **NÃO HOMOLOGADA** até os portões obrigatórios serem executados.
+
+
+## Revisão de integração — escopo posterior à entrega publicada
+
+HEAD de partida conferido: `54fbc544a6dfdf190f010de18ff0d61099c00fb5`, na branch `codex/remora-matriz-objetiva`. O diff desde `9ebc9eedd2243c44601efd9dfb125bc4fcacb55e` acrescentava apenas `RemoraScalper_1996_CONSOLIDADO.mq5`, com a expansão literal do módulo e dois comentários. Esse arquivo histórico permanece intocado. A integração atual usa a branch própria `codex/remora-1996-integracao` e o comando `Comando_Codex_Remora_1996_Integracao_Entrega.md` fornecido pelo usuário.
+
+As seções anteriores registram a primeira entrega. A evidência corrente desta revisão fica em `artifacts/integracao_1996/`; os resultados e ZIPs anteriores foram preservados como históricos, sem sobrescrita.
+
+O teste integrado reproduziu a perda de uma oportunidade sintética entre callbacks do timer. A correção admite somente a cauda corrente, depois de BE/EOD/recovery financeiro, por uma consulta `CopyTicks` limitada a257 registros (256 de orçamento mais um de verificação), com atraso de cursor de no máximo1000ms. Esses limites são orçamento de trabalho, não critérios de mercado. Cauda maior ou batch incompleto aguarda o timer; não há confirmação retroativa. Um callback ainda pode bloquear numa API síncrona: o limite não promete latência máxima de bolsa.
+
+Gap acima de30s deixa de significar corrupção irrecuperável por si só. O motor retira a evidência, muda de época e reconstrói analiticamente pelo timer. Cada intervalo precisa de duas leituras idênticas, ordenadas e com multiplicidade preservada; cada M1 fechada precisa de concordância entre volume de negócios e `MqlRates.real_volume`. Volume M1 ausente/incompatível, erro ou instabilidade mantém entradas bloqueadas. A conclusão espera uma M1 fechada verificada e catch-up atual, retira snapshots reconstruídos e renova o cutoff causal; o tick isolado não limpa falha. APIs do mesmo broker podem omitir dados de forma consistente: não se afirma completude da bolsa ou identificação universal de prints.
+
+A incompatibilidade de época é agora examinada antes da prontidão em `OMRevalidate`; o ciclo financeiro continua tendo prioridade antes de cancelar ARMED. Os limites estratégicos, incluindo a associação atual de drawdown CONT ao evento de dois ticks, não foram alterados.
+
+Pendência estratégica reproduzida em BUY/SELL: com tick5WIN/0,5WDO, recuo de10WIN/1WDO cancela CONT ainda na mesma direção de onda; recuo de um tick mantém a tese nos fixtures. A especificação exige sustentação/rejeição mas não fixa essa tolerância. Menor proposta: tornar a tolerância de invalidação explicitamente independente da amostragem, preservando inicialmente o comportamento e expondo a decisão ao usuário. Nenhum input novo ou limiar alternativo foi introduzido nesta entrega; o ponto NÃO é declarado resolvido.

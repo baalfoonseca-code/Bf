@@ -56,3 +56,18 @@ python3 -m unittest discover -s tests -p 'test_financial_invariants.py' -v
 | Compilação MetaEditor e warnings reais | `COMPILACAO_NATIVA_NAO_VERIFICADA` |
 
 Não há evidência de rentabilidade, acurácia ou comportamento operacional homologado. Identidade textual é uma prova de preservação do código protegido, não prova suficiente de equivalência de trajetória: a nova seleção de entradas muda quando existem posições e, portanto, resultados e cronologia subsequente. Situação: **NÃO HOMOLOGADO** enquanto faltarem os portões nativos e o replay financeiro.
+
+
+## Revisão de integração — escopo posterior à entrega publicada
+
+HEAD de partida conferido: `54fbc544a6dfdf190f010de18ff0d61099c00fb5`, na branch `codex/remora-matriz-objetiva`. O diff desde `9ebc9eedd2243c44601efd9dfb125bc4fcacb55e` acrescentava apenas `RemoraScalper_1996_CONSOLIDADO.mq5`, com a expansão literal do módulo e dois comentários. Esse arquivo histórico permanece intocado. A integração atual usa a branch própria `codex/remora-1996-integracao` e o comando `Comando_Codex_Remora_1996_Integracao_Entrega.md` fornecido pelo usuário.
+
+As seções anteriores registram a primeira entrega. A evidência corrente desta revisão fica em `artifacts/integracao_1996/`; os resultados e ZIPs anteriores foram preservados como históricos, sem sobrescrita.
+
+Nesta revisão, `SendOrder`, `ManageBreakEven`, `OnTradeTransaction`, `ProcessEOD`, structs, parsers, journals e as253 funções protegidas continuam literalmente iguais a `1995`. O cálculo percentual e a única exceção autorizada do lote fixo permanecem como antes. Os65 inputs efetivos e sua ordem/defaults não mudaram.
+
+Além dessa comparação, o novo harness executa o módulo completo e os corpos reais de callbacks, decisão, guarda e `SendOrder`. As APIs financeiras do terminal são stubs nomeados: o teste observa a ordem `BE/EOD → coleta limitada → preparação → barreira → PositionOpen`, sem alegar deal real. Reproduz pedido incerto detendo o ciclo durante mudança de época: não cancela a obrigação nem reenvia. O gate financeiro do timer continua60s no tester/1s live. Mudança de quote durante a decisão, B3, overshoot e densidade acima do orçamento impedem despacho sem relaxar controles.
+
+`RemoraScalper_1996_Completo.mq5` é expansão determinística dos mesmos fontes. Testes comparam cada função, a sequência completa dos65 inputs e os únicos dois includes padrão restantes. Não há segunda implementação nem modificação financeira durante a consolidação.
+
+Resultados correntes: `artifacts/integracao_1996/test-results.txt`. Compilação nativa, servidor MT5, reinícios operacionais e validação financeira com feed real permanecem NÃO EXECUTADOS. `COMPILACAO_NATIVA_NAO_VERIFICADA`; nenhuma quantidade zero de erros/warnings nativos é alegada.

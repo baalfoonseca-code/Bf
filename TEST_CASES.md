@@ -142,3 +142,12 @@ A candidata permanece **NÃO HOMOLOGADA** enquanto os portões nativos e de dado
 continuarem pendentes. O relatório final deve registrar os resultados reais das
 suítes locais, incluindo falhas corrigidas, sem converter testes não executados
 em aprovações.
+
+
+## Integração posterior a54fbc54
+
+A rodada corrente executou96 testes: as61 provas anteriores,10 testes de consolidação,16 de recuperação/admissão/caracterização CONT e9 da sequência completa de callbacks/decisão/SendOrder, usando stubs explícitos de serviços financeiros. Resultado exato em `artifacts/integracao_1996/test-results.txt`.
+
+O fixture `tests/fixtures/OnTick_54fbc54.mql` preserva o callback controle daquela revisão, com hash verificado pelo teste. A comparação reproduz uma tentativa API sintética aos250ms com a nova admissão, enquanto a agenda anterior observa a retração antes do timer e perde a oportunidade sintética. Isso não é fill ou medição de mercado. Sob saturação acima do orçamento, o teste exige zero confirmação/envio retroativo. Mutação de quote durante a guarda também impede preparação e despacho.
+
+A caracterização de CONT confirma recuo de2ticks cancelando mesmo sem reversão da onda, em BUY/SELLWIN/WDO. A regra foi preservada; o teste não valida sua qualidade preditiva nem resolve a ambiguidade estratégica. A recuperação exige duas leituras consistentes e comparação de volume com M1; falta ou divergência no agregado do broker mantém bloqueio.

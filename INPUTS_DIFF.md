@@ -96,3 +96,8 @@ Base: **73 inputs**. Candidata e include: **65 inputs**: 48 preservados, 25 remo
 | `Inp_SigmaCheckToleranceTicks` | NOVO — hipótese | `double = 0.000001` | Tolerância numérica da comparação independente em unidades do tick; não precisão estatística. |
 
 Os slots históricos `MACRO_GATE_ENABLED`, `LATE_DIRECTION_BLOCK_ENABLED` e `REJECT_POC_TIES` do CSV financeiro permanecem com constantes1/1/0 para preservar o schema original. São campos aposentados de compatibilidade, sem uso em decisões. Os rótulos `BASE`/`BASE_CONT` nas novas ordens são mapeamento de identidade; não representam pontuação da matriz antiga. `TURBO`/`TURBO_CONT` continuam reconhecidos em recuperação, sem multiplicação nas novas entradas.
+
+
+## Integração posterior
+
+A integração não altera os65 inputs efetivos, seus tipos, defaults ou ordem. `OM_LIVE_MAX_RECORDS=256` e `OM_LIVE_MAX_LAG_MSC=1000` são limites internos de trabalho analítico, documentados como orçamento, não parâmetros otimizados de entrada. Backlog excessivo aguarda timer. O reaproveitamento de `Inp_PathEventTicks` como tolerância de recuo da CONT foi reproduzido e permanece uma ambiguidade estratégica explícita, sem mudança silenciosa.

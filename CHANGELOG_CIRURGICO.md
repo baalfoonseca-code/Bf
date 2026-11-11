@@ -61,3 +61,10 @@ Executar `python3 -m unittest discover -s tests -v`. Resultados reais da última
 A compilação nativa permanece NÃO EXECUTADA: MetaEditor e MetaTrader5 não estão instalados. Não há log de zero erros ou warnings nativos. Para compilar, manter o `.mq5` e o diretório `include` juntos em uma área de pesquisa do MetaEditor, com a biblioteca padrão `Trade/Trade.mqh` e `Trade/PositionInfo.mqh`. Compilar sem anexar a uma conta real e preservar log/build do terminal.
 
 Faltam replay tick a tick do mesmo feed real para base/candidata, testes operacionais de reinício/BE/pending/partial/netting/EOD, cobertura de leilão e sessões da corretora, desempenho real, distribuição do instante de READY, variação de sigma e frequência B3 por ativo. Nenhuma taxa de acerto, melhora de rentabilidade ou homologação é alegada. Não executar base e candidata enviando ordens simultaneamente na mesma conta netting.
+
+
+## Integração posterior — revisão atual
+
+A revisão `codex/remora-1996-integracao`, derivada de54fbc54, acrescenta admissão limitada do fluxo corrente após proteção financeira, recuperação analítica controlada com validação cruzada em barras M1 e entrega única `RemoraScalper_1996_Completo.mq5`. O código financeiro protegido, os65inputs e as regras estratégicas não foram reparametrizados. Detalhes, evidências, diff e pendências estão em `INTEGRACAO_ENTREGA_1.996.md` e `artifacts/integracao_1996/`.
+
+A referência a coleta exclusivamente no timer nas seções anteriores descreve a revisão histórica inicial e é substituída pelo caminho limitado e auditado desta integração. Da mesma forma, o bloqueio antes permanente por silêncio passa a requerer recuperação verificável; falhas sem prova suficiente continuam bloqueadas. As outras restrições e pendências nativas permanecem.
