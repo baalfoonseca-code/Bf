@@ -197,9 +197,10 @@ void OMClassify(const OMWaveBook &b,double close,long msc,const OMConfig &c,OMDe
       double net=w.dir*(close-w.start);
       double eventNet=w.dir*(w.eventPrice-w.start);
       double efficiency=eventNet/w.eventPath;
-      double drawdown=w.dir==1?w.high-close:close-w.low;
+      // eventStep samples the path; it is not a CONT drawdown tolerance.
+      // Wave identity/direction and the existing evidence sustain the thesis.
       if(net>=c.minCont && eventNet>0 && efficiency>=c.contEfficiency &&
-         w.volume/w.baseline>=c.contEffort && drawdown<c.eventStep)
+         w.volume/w.baseline>=c.contEffort)
       {
          cont.classification=w.dir==1?1:2; cont.dir=w.dir; cont.waveID=w.id;
          cont.effort=w.volume/w.baseline; cont.netProgress=net;
@@ -943,11 +944,12 @@ int OMRevalidate(const OMThesis &frozen,string &reason)
       if(w.id!=frozen.waveID || w.dir!=frozen.dir)
       { reason="CONT_WAVE_REVERSED"; return -1; }
       double net=w.dir*(gOMLastPrice-w.start);
-      double drawdown=w.dir==1?w.high-gOMLastPrice:gOMLastPrice-w.low;
       double eventNet=w.dir*(w.eventPrice-w.start);
       if(w.eventPath<=0 || w.baseline<=0) return 0;
+      // A retreat alone is not a veto: structural reversal is checked above,
+      // and measured net progress, efficiency and effort must still hold.
       if(net<cfg.minCont || eventNet/w.eventPath<cfg.contEfficiency ||
-         w.volume/w.baseline<cfg.contEffort || drawdown>=cfg.eventStep)
+         w.volume/w.baseline<cfg.contEffort)
       { reason="CONT_PROGRESS_OR_SUSTAINMENT_LOST"; return -1; }
    }
    else if(frozen.route=="ABS")

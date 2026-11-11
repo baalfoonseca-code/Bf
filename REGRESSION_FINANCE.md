@@ -71,3 +71,14 @@ Além dessa comparação, o novo harness executa o módulo completo e os corpos 
 `RemoraScalper_1996_Completo.mq5` é expansão determinística dos mesmos fontes. Testes comparam cada função, a sequência completa dos65 inputs e os únicos dois includes padrão restantes. Não há segunda implementação nem modificação financeira durante a consolidação.
 
 Resultados correntes: `artifacts/integracao_1996/test-results.txt`. Compilação nativa, servidor MT5, reinícios operacionais e validação financeira com feed real permanecem NÃO EXECUTADOS. `COMPILACAO_NATIVA_NAO_VERIFICADA`; nenhuma quantidade zero de erros/warnings nativos é alegada.
+
+
+## Correção cirúrgica CONT — 11/11/2026
+
+Contra b6961c4, o fonte principal modular e o controle 1995 são byte a byte
+intactos; somente duas funções analíticas mudaram no módulo. Não há alteração
+financeira, FAR ou de integração nesta correção. A preservação estática e as
+suítes portáteis são registradas em `artifacts/correcao_cont_1996/validation.json`
+e `test-results.txt`. Os novos cenários de callback usam APIs MT5 simuladas:
+não comprovam fills, persistência real ou equivalência operacional de trajetórias.
+COMPILACAO_NATIVA_NAO_VERIFICADA; testes operacionais MT5 permanecem não executados.

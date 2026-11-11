@@ -66,3 +66,17 @@ Builder auditável: `python3 tools/build_consolidated.py`; conferência sem escr
 Pacote corrente: `artifacts/remora_1996_integracao_completa.zip`. Ele contém a versão única, os fontes modulares da mesma revisão, dependências próprias, testes/fixtures, builder, comando, diff, relatórios e hashes. O consolidado histórico `RemoraScalper_1996_CONSOLIDADO.mq5` não é usado como fonte da entrega nova nem misturado ao ZIP.
 
 No terminal, coloque o `.mq5` consolidado em uma pasta de pesquisa de `MQL5/Experts`, abra e compile com F7. Para a versão modular, mantenha a subpasta `include` ao lado do principal. Não executar simultaneamente as duas apresentações do mesmo EA. Nenhum `.ex5` foi certificado; compilação nativa permanece pendente e a candidata NÃO HOMOLOGADA.
+
+
+## Entrega corrigida CONT — 11/11/2026
+
+Esta revisão substitui o completo da integração b6961c4 para esta entrega.
+Arquivo único: `RemoraScalper_1996_Completo.mq5`, 350114 bytes, SHA-256
+`381673d13bdda0ab175bd11d5d603f65f4df9f56dc67f6b884d18eb553b87cc5`.
+ObjectiveMatrix incorporado integralmente; restam só os includes padrão Trade
+do MT5. Regeneração: `python3 tools/build_consolidated.py`; conferência:
+`python3 tools/build_consolidated.py --check`. Não é necessário copiar outro
+fonte próprio para usar o completo. Não há novo ZIP nesta entrega; pacotes
+anteriores são históricos. Instalação no MetaEditor continua pendente de
+compilação real; nenhum EX5 é entregue. Hashes dos fontes e provas atuais em
+`artifacts/correcao_cont_1996/validation.json`.

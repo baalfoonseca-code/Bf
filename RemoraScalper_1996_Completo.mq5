@@ -3,7 +3,7 @@
 // Rebuild: python3 tools/build_consolidated.py
 // COMPILACAO_NATIVA_NAO_VERIFICADA; portable equivalence is not a MetaEditor build.
 // SOURCE_SHA256 RemoraScalper_MatrizObjetiva.mq5 f192f610bbc01cdd0275bd8980f9439ef654287ebdc52747abd641f98f57efd8
-// SOURCE_SHA256 include/ObjectiveMatrix.mqh 47993d4e9d501b43bb84afb6383a33a35cd7d2c663439f6e62a5f76761c66bc4
+// SOURCE_SHA256 include/ObjectiveMatrix.mqh 48cae587750f41b468b754c2ed2b7446f064120bee5b1ff53a388cdf556a9cf6
 // GENERATED_BODY_BEGIN
 // CANDIDATE 1.996: objective entry intelligence only. NOT HOMOLOGATED.
 // Canonical original: 1995, SHA256 2479ed8e5c9189438d787be1e804abbd95f9e1c06e01042e560251e64ef67fc5.
@@ -655,9 +655,10 @@ void OMClassify(const OMWaveBook &b,double close,long msc,const OMConfig &c,OMDe
       double net=w.dir*(close-w.start);
       double eventNet=w.dir*(w.eventPrice-w.start);
       double efficiency=eventNet/w.eventPath;
-      double drawdown=w.dir==1?w.high-close:close-w.low;
+      // eventStep samples the path; it is not a CONT drawdown tolerance.
+      // Wave identity/direction and the existing evidence sustain the thesis.
       if(net>=c.minCont && eventNet>0 && efficiency>=c.contEfficiency &&
-         w.volume/w.baseline>=c.contEffort && drawdown<c.eventStep)
+         w.volume/w.baseline>=c.contEffort)
       {
          cont.classification=w.dir==1?1:2; cont.dir=w.dir; cont.waveID=w.id;
          cont.effort=w.volume/w.baseline; cont.netProgress=net;
@@ -1401,11 +1402,12 @@ int OMRevalidate(const OMThesis &frozen,string &reason)
       if(w.id!=frozen.waveID || w.dir!=frozen.dir)
       { reason="CONT_WAVE_REVERSED"; return -1; }
       double net=w.dir*(gOMLastPrice-w.start);
-      double drawdown=w.dir==1?w.high-gOMLastPrice:gOMLastPrice-w.low;
       double eventNet=w.dir*(w.eventPrice-w.start);
       if(w.eventPath<=0 || w.baseline<=0) return 0;
+      // A retreat alone is not a veto: structural reversal is checked above,
+      // and measured net progress, efficiency and effort must still hold.
       if(net<cfg.minCont || eventNet/w.eventPath<cfg.contEfficiency ||
-         w.volume/w.baseline<cfg.contEffort || drawdown>=cfg.eventStep)
+         w.volume/w.baseline<cfg.contEffort)
       { reason="CONT_PROGRESS_OR_SUSTAINMENT_LOST"; return -1; }
    }
    else if(frozen.route=="ABS")

@@ -1,0 +1,313 @@
+test_WDO_BUY_closed_m1_retreat_is_causal_and_snapshot_frozen (test_cont_sustainment.ContSustainmentTests.test_WDO_BUY_closed_m1_retreat_is_causal_and_snapshot_frozen) ... FAIL
+test_WDO_BUY_efficiency_loss_without_structural_reversal (test_cont_sustainment.ContSustainmentTests.test_WDO_BUY_efficiency_loss_without_structural_reversal) ... ok
+test_WDO_BUY_effort_guard_fixture (test_cont_sustainment.ContSustainmentTests.test_WDO_BUY_effort_guard_fixture) ... ok
+test_WDO_BUY_larger_retreat_with_sustained_thesis (test_cont_sustainment.ContSustainmentTests.test_WDO_BUY_larger_retreat_with_sustained_thesis) ... FAIL
+test_WDO_BUY_net_progress_guard_fixture (test_cont_sustainment.ContSustainmentTests.test_WDO_BUY_net_progress_guard_fixture) ... ok
+test_WDO_BUY_one_tick_below_structural_reversal (test_cont_sustainment.ContSustainmentTests.test_WDO_BUY_one_tick_below_structural_reversal) ... FAIL
+test_WDO_BUY_sampling_scale_has_no_separate_drawdown_veto (test_cont_sustainment.ContSustainmentTests.test_WDO_BUY_sampling_scale_has_no_separate_drawdown_veto) ... FAIL
+test_WDO_BUY_structural_reversal_above_threshold (test_cont_sustainment.ContSustainmentTests.test_WDO_BUY_structural_reversal_above_threshold) ... ok
+test_WDO_BUY_structural_reversal_at_threshold (test_cont_sustainment.ContSustainmentTests.test_WDO_BUY_structural_reversal_at_threshold) ... ok
+test_WDO_BUY_two_ticks_and_resumption (test_cont_sustainment.ContSustainmentTests.test_WDO_BUY_two_ticks_and_resumption) ... FAIL
+test_WDO_BUY_two_ticks_revalidation_without_reclassification (test_cont_sustainment.ContSustainmentTests.test_WDO_BUY_two_ticks_revalidation_without_reclassification) ... FAIL
+test_WDO_SELL_closed_m1_retreat_is_causal_and_snapshot_frozen (test_cont_sustainment.ContSustainmentTests.test_WDO_SELL_closed_m1_retreat_is_causal_and_snapshot_frozen) ... FAIL
+test_WDO_SELL_efficiency_loss_without_structural_reversal (test_cont_sustainment.ContSustainmentTests.test_WDO_SELL_efficiency_loss_without_structural_reversal) ... ok
+test_WDO_SELL_effort_guard_fixture (test_cont_sustainment.ContSustainmentTests.test_WDO_SELL_effort_guard_fixture) ... ok
+test_WDO_SELL_larger_retreat_with_sustained_thesis (test_cont_sustainment.ContSustainmentTests.test_WDO_SELL_larger_retreat_with_sustained_thesis) ... FAIL
+test_WDO_SELL_net_progress_guard_fixture (test_cont_sustainment.ContSustainmentTests.test_WDO_SELL_net_progress_guard_fixture) ... ok
+test_WDO_SELL_one_tick_below_structural_reversal (test_cont_sustainment.ContSustainmentTests.test_WDO_SELL_one_tick_below_structural_reversal) ... FAIL
+test_WDO_SELL_sampling_scale_has_no_separate_drawdown_veto (test_cont_sustainment.ContSustainmentTests.test_WDO_SELL_sampling_scale_has_no_separate_drawdown_veto) ... FAIL
+test_WDO_SELL_structural_reversal_above_threshold (test_cont_sustainment.ContSustainmentTests.test_WDO_SELL_structural_reversal_above_threshold) ... ok
+test_WDO_SELL_structural_reversal_at_threshold (test_cont_sustainment.ContSustainmentTests.test_WDO_SELL_structural_reversal_at_threshold) ... ok
+test_WDO_SELL_two_ticks_and_resumption (test_cont_sustainment.ContSustainmentTests.test_WDO_SELL_two_ticks_and_resumption) ... FAIL
+test_WDO_SELL_two_ticks_revalidation_without_reclassification (test_cont_sustainment.ContSustainmentTests.test_WDO_SELL_two_ticks_revalidation_without_reclassification) ... FAIL
+test_WIN_BUY_closed_m1_retreat_is_causal_and_snapshot_frozen (test_cont_sustainment.ContSustainmentTests.test_WIN_BUY_closed_m1_retreat_is_causal_and_snapshot_frozen) ... FAIL
+test_WIN_BUY_efficiency_loss_without_structural_reversal (test_cont_sustainment.ContSustainmentTests.test_WIN_BUY_efficiency_loss_without_structural_reversal) ... ok
+test_WIN_BUY_effort_guard_fixture (test_cont_sustainment.ContSustainmentTests.test_WIN_BUY_effort_guard_fixture) ... ok
+test_WIN_BUY_larger_retreat_with_sustained_thesis (test_cont_sustainment.ContSustainmentTests.test_WIN_BUY_larger_retreat_with_sustained_thesis) ... FAIL
+test_WIN_BUY_net_progress_guard_fixture (test_cont_sustainment.ContSustainmentTests.test_WIN_BUY_net_progress_guard_fixture) ... ok
+test_WIN_BUY_one_tick_below_structural_reversal (test_cont_sustainment.ContSustainmentTests.test_WIN_BUY_one_tick_below_structural_reversal) ... FAIL
+test_WIN_BUY_sampling_scale_has_no_separate_drawdown_veto (test_cont_sustainment.ContSustainmentTests.test_WIN_BUY_sampling_scale_has_no_separate_drawdown_veto) ... FAIL
+test_WIN_BUY_structural_reversal_above_threshold (test_cont_sustainment.ContSustainmentTests.test_WIN_BUY_structural_reversal_above_threshold) ... ok
+test_WIN_BUY_structural_reversal_at_threshold (test_cont_sustainment.ContSustainmentTests.test_WIN_BUY_structural_reversal_at_threshold) ... ok
+test_WIN_BUY_two_ticks_and_resumption (test_cont_sustainment.ContSustainmentTests.test_WIN_BUY_two_ticks_and_resumption) ... FAIL
+test_WIN_BUY_two_ticks_revalidation_without_reclassification (test_cont_sustainment.ContSustainmentTests.test_WIN_BUY_two_ticks_revalidation_without_reclassification) ... FAIL
+test_WIN_SELL_closed_m1_retreat_is_causal_and_snapshot_frozen (test_cont_sustainment.ContSustainmentTests.test_WIN_SELL_closed_m1_retreat_is_causal_and_snapshot_frozen) ... FAIL
+test_WIN_SELL_efficiency_loss_without_structural_reversal (test_cont_sustainment.ContSustainmentTests.test_WIN_SELL_efficiency_loss_without_structural_reversal) ... ok
+test_WIN_SELL_effort_guard_fixture (test_cont_sustainment.ContSustainmentTests.test_WIN_SELL_effort_guard_fixture) ... ok
+test_WIN_SELL_larger_retreat_with_sustained_thesis (test_cont_sustainment.ContSustainmentTests.test_WIN_SELL_larger_retreat_with_sustained_thesis) ... FAIL
+test_WIN_SELL_net_progress_guard_fixture (test_cont_sustainment.ContSustainmentTests.test_WIN_SELL_net_progress_guard_fixture) ... ok
+test_WIN_SELL_one_tick_below_structural_reversal (test_cont_sustainment.ContSustainmentTests.test_WIN_SELL_one_tick_below_structural_reversal) ... FAIL
+test_WIN_SELL_sampling_scale_has_no_separate_drawdown_veto (test_cont_sustainment.ContSustainmentTests.test_WIN_SELL_sampling_scale_has_no_separate_drawdown_veto) ... FAIL
+test_WIN_SELL_structural_reversal_above_threshold (test_cont_sustainment.ContSustainmentTests.test_WIN_SELL_structural_reversal_above_threshold) ... ok
+test_WIN_SELL_structural_reversal_at_threshold (test_cont_sustainment.ContSustainmentTests.test_WIN_SELL_structural_reversal_at_threshold) ... ok
+test_WIN_SELL_two_ticks_and_resumption (test_cont_sustainment.ContSustainmentTests.test_WIN_SELL_two_ticks_and_resumption) ... FAIL
+test_WIN_SELL_two_ticks_revalidation_without_reclassification (test_cont_sustainment.ContSustainmentTests.test_WIN_SELL_two_ticks_revalidation_without_reclassification) ... FAIL
+
+======================================================================
+FAIL: test_WDO_BUY_closed_m1_retreat_is_causal_and_snapshot_frozen (test_cont_sustainment.ContSustainmentTests.test_WDO_BUY_closed_m1_retreat_is_causal_and_snapshot_frozen)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 173, in <lambda>
+    lambda self, name=_name: self.run_case(name))
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 168, in run_case
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : closed M1 includes valid two-tick retreat
+
+======================================================================
+FAIL: test_WDO_BUY_larger_retreat_with_sustained_thesis (test_cont_sustainment.ContSustainmentTests.test_WDO_BUY_larger_retreat_with_sustained_thesis)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 173, in <lambda>
+    lambda self, name=_name: self.run_case(name))
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 168, in run_case
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : CONT classification after retreat
+
+======================================================================
+FAIL: test_WDO_BUY_one_tick_below_structural_reversal (test_cont_sustainment.ContSustainmentTests.test_WDO_BUY_one_tick_below_structural_reversal)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 173, in <lambda>
+    lambda self, name=_name: self.run_case(name))
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 168, in run_case
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : CONT classification after retreat
+
+======================================================================
+FAIL: test_WDO_BUY_sampling_scale_has_no_separate_drawdown_veto (test_cont_sustainment.ContSustainmentTests.test_WDO_BUY_sampling_scale_has_no_separate_drawdown_veto)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 173, in <lambda>
+    lambda self, name=_name: self.run_case(name))
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 168, in run_case
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : CONT classification after retreat
+
+======================================================================
+FAIL: test_WDO_BUY_two_ticks_and_resumption (test_cont_sustainment.ContSustainmentTests.test_WDO_BUY_two_ticks_and_resumption)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 173, in <lambda>
+    lambda self, name=_name: self.run_case(name))
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 168, in run_case
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : CONT classification after retreat
+
+======================================================================
+FAIL: test_WDO_BUY_two_ticks_revalidation_without_reclassification (test_cont_sustainment.ContSustainmentTests.test_WDO_BUY_two_ticks_revalidation_without_reclassification)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 173, in <lambda>
+    lambda self, name=_name: self.run_case(name))
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 168, in run_case
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : independent revalidation tolerates two ticks with sustained evidence
+
+======================================================================
+FAIL: test_WDO_SELL_closed_m1_retreat_is_causal_and_snapshot_frozen (test_cont_sustainment.ContSustainmentTests.test_WDO_SELL_closed_m1_retreat_is_causal_and_snapshot_frozen)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 173, in <lambda>
+    lambda self, name=_name: self.run_case(name))
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 168, in run_case
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : closed M1 includes valid two-tick retreat
+
+======================================================================
+FAIL: test_WDO_SELL_larger_retreat_with_sustained_thesis (test_cont_sustainment.ContSustainmentTests.test_WDO_SELL_larger_retreat_with_sustained_thesis)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 173, in <lambda>
+    lambda self, name=_name: self.run_case(name))
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 168, in run_case
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : CONT classification after retreat
+
+======================================================================
+FAIL: test_WDO_SELL_one_tick_below_structural_reversal (test_cont_sustainment.ContSustainmentTests.test_WDO_SELL_one_tick_below_structural_reversal)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 173, in <lambda>
+    lambda self, name=_name: self.run_case(name))
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 168, in run_case
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : CONT classification after retreat
+
+======================================================================
+FAIL: test_WDO_SELL_sampling_scale_has_no_separate_drawdown_veto (test_cont_sustainment.ContSustainmentTests.test_WDO_SELL_sampling_scale_has_no_separate_drawdown_veto)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 173, in <lambda>
+    lambda self, name=_name: self.run_case(name))
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 168, in run_case
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : CONT classification after retreat
+
+======================================================================
+FAIL: test_WDO_SELL_two_ticks_and_resumption (test_cont_sustainment.ContSustainmentTests.test_WDO_SELL_two_ticks_and_resumption)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 173, in <lambda>
+    lambda self, name=_name: self.run_case(name))
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 168, in run_case
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : CONT classification after retreat
+
+======================================================================
+FAIL: test_WDO_SELL_two_ticks_revalidation_without_reclassification (test_cont_sustainment.ContSustainmentTests.test_WDO_SELL_two_ticks_revalidation_without_reclassification)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 173, in <lambda>
+    lambda self, name=_name: self.run_case(name))
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 168, in run_case
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : independent revalidation tolerates two ticks with sustained evidence
+
+======================================================================
+FAIL: test_WIN_BUY_closed_m1_retreat_is_causal_and_snapshot_frozen (test_cont_sustainment.ContSustainmentTests.test_WIN_BUY_closed_m1_retreat_is_causal_and_snapshot_frozen)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 173, in <lambda>
+    lambda self, name=_name: self.run_case(name))
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 168, in run_case
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : closed M1 includes valid two-tick retreat
+
+======================================================================
+FAIL: test_WIN_BUY_larger_retreat_with_sustained_thesis (test_cont_sustainment.ContSustainmentTests.test_WIN_BUY_larger_retreat_with_sustained_thesis)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 173, in <lambda>
+    lambda self, name=_name: self.run_case(name))
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 168, in run_case
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : CONT classification after retreat
+
+======================================================================
+FAIL: test_WIN_BUY_one_tick_below_structural_reversal (test_cont_sustainment.ContSustainmentTests.test_WIN_BUY_one_tick_below_structural_reversal)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 173, in <lambda>
+    lambda self, name=_name: self.run_case(name))
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 168, in run_case
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : CONT classification after retreat
+
+======================================================================
+FAIL: test_WIN_BUY_sampling_scale_has_no_separate_drawdown_veto (test_cont_sustainment.ContSustainmentTests.test_WIN_BUY_sampling_scale_has_no_separate_drawdown_veto)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 173, in <lambda>
+    lambda self, name=_name: self.run_case(name))
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 168, in run_case
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : CONT classification after retreat
+
+======================================================================
+FAIL: test_WIN_BUY_two_ticks_and_resumption (test_cont_sustainment.ContSustainmentTests.test_WIN_BUY_two_ticks_and_resumption)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 173, in <lambda>
+    lambda self, name=_name: self.run_case(name))
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 168, in run_case
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : CONT classification after retreat
+
+======================================================================
+FAIL: test_WIN_BUY_two_ticks_revalidation_without_reclassification (test_cont_sustainment.ContSustainmentTests.test_WIN_BUY_two_ticks_revalidation_without_reclassification)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 173, in <lambda>
+    lambda self, name=_name: self.run_case(name))
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 168, in run_case
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : independent revalidation tolerates two ticks with sustained evidence
+
+======================================================================
+FAIL: test_WIN_SELL_closed_m1_retreat_is_causal_and_snapshot_frozen (test_cont_sustainment.ContSustainmentTests.test_WIN_SELL_closed_m1_retreat_is_causal_and_snapshot_frozen)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 173, in <lambda>
+    lambda self, name=_name: self.run_case(name))
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 168, in run_case
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : closed M1 includes valid two-tick retreat
+
+======================================================================
+FAIL: test_WIN_SELL_larger_retreat_with_sustained_thesis (test_cont_sustainment.ContSustainmentTests.test_WIN_SELL_larger_retreat_with_sustained_thesis)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 173, in <lambda>
+    lambda self, name=_name: self.run_case(name))
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 168, in run_case
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : CONT classification after retreat
+
+======================================================================
+FAIL: test_WIN_SELL_one_tick_below_structural_reversal (test_cont_sustainment.ContSustainmentTests.test_WIN_SELL_one_tick_below_structural_reversal)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 173, in <lambda>
+    lambda self, name=_name: self.run_case(name))
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 168, in run_case
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : CONT classification after retreat
+
+======================================================================
+FAIL: test_WIN_SELL_sampling_scale_has_no_separate_drawdown_veto (test_cont_sustainment.ContSustainmentTests.test_WIN_SELL_sampling_scale_has_no_separate_drawdown_veto)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 173, in <lambda>
+    lambda self, name=_name: self.run_case(name))
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 168, in run_case
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : CONT classification after retreat
+
+======================================================================
+FAIL: test_WIN_SELL_two_ticks_and_resumption (test_cont_sustainment.ContSustainmentTests.test_WIN_SELL_two_ticks_and_resumption)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 173, in <lambda>
+    lambda self, name=_name: self.run_case(name))
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 168, in run_case
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : CONT classification after retreat
+
+======================================================================
+FAIL: test_WIN_SELL_two_ticks_revalidation_without_reclassification (test_cont_sustainment.ContSustainmentTests.test_WIN_SELL_two_ticks_revalidation_without_reclassification)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 173, in <lambda>
+    lambda self, name=_name: self.run_case(name))
+                             ^^^^^^^^^^^^^^^^^^^
+  File "/workspace/Bf/tests/test_cont_sustainment.py", line 168, in run_case
+    self.assertEqual(result.returncode, 0, result.stderr)
+AssertionError: 1 != 0 : independent revalidation tolerates two ticks with sustained evidence
+
+----------------------------------------------------------------------
+Ran 44 tests in 2.743s
+
+FAILED (failures=24)

@@ -65,3 +65,13 @@ Gap acima de30s deixa de significar corrupção irrecuperável por si só. O mot
 A incompatibilidade de época é agora examinada antes da prontidão em `OMRevalidate`; o ciclo financeiro continua tendo prioridade antes de cancelar ARMED. Os limites estratégicos, incluindo a associação atual de drawdown CONT ao evento de dois ticks, não foram alterados.
 
 Pendência estratégica reproduzida em BUY/SELL: com tick5WIN/0,5WDO, recuo de10WIN/1WDO cancela CONT ainda na mesma direção de onda; recuo de um tick mantém a tese nos fixtures. A especificação exige sustentação/rejeição mas não fixa essa tolerância. Menor proposta: tornar a tolerância de invalidação explicitamente independente da amostragem, preservando inicialmente o comportamento e expondo a decisão ao usuário. Nenhum input novo ou limiar alternativo foi introduzido nesta entrega; o ponto NÃO é declarado resolvido.
+
+
+## Correção cirúrgica CONT — 11/11/2026
+
+A pendência de invalidação por dois ticks, registrada na integração anterior,
+foi corrigida sob o comando atual: retirada somente da comparação direta entre
+drawdown e eventStep em OMClassify/OMRevalidate, sem substituto numérico ou novo
+critério. Demais condições e 65 inputs preservados. Evidências atuais, auditoria
+individual de inputs, limites e diff: `artifacts/correcao_cont_1996/`. Os parágrafos
+acima descrevem as revisões históricas. COMPILACAO_NATIVA_NAO_VERIFICADA; NÃO HOMOLOGADO.

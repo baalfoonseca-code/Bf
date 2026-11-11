@@ -93,7 +93,7 @@ SCENARIOS={
 }
 for family in ['WIN','WDO']:
  for direction in [1,-1]:
-  name='cont_sampling_drawdown_coupling_'+family+'_'+str(direction).replace('-','minus')
+  name='cont_two_tick_retreat_preserves_sustainment_'+family+'_'+str(direction).replace('-','minus')
   tick=5 if family=='WIN' else .5
   step=tick*2; start=1000 if family=='WIN' else 5000
   move=100 if family=='WIN' else 4
@@ -107,8 +107,8 @@ for family in ['WIN','WDO']:
    gLatest=trade(60003,{start+direction*(move-tick)});gHistory.push_back(gLatest);check(OMReadChunk(60004));
    check(OMRevalidate(frozen,reason)==1);
    gLatest=trade(60004,{start+direction*(move-step)});gHistory.push_back(gLatest);check(OMReadChunk(60005));
-   check(gOMWaves.active.dir=={direction});check(OMRevalidate(frozen,reason)==-1);
-   check(reason=="CONT_PROGRESS_OR_SUSTAINMENT_LOST");
+   check(gOMWaves.active.dir=={direction});check(OMRevalidate(frozen,reason)==1);
+   check(reason=="THESIS_VALID");
   """
 class AnalyticRecoveryTests(unittest.TestCase):
  @classmethod

@@ -68,3 +68,13 @@ Faltam replay tick a tick do mesmo feed real para base/candidata, testes operaci
 A revisão `codex/remora-1996-integracao`, derivada de54fbc54, acrescenta admissão limitada do fluxo corrente após proteção financeira, recuperação analítica controlada com validação cruzada em barras M1 e entrega única `RemoraScalper_1996_Completo.mq5`. O código financeiro protegido, os65inputs e as regras estratégicas não foram reparametrizados. Detalhes, evidências, diff e pendências estão em `INTEGRACAO_ENTREGA_1.996.md` e `artifacts/integracao_1996/`.
 
 A referência a coleta exclusivamente no timer nas seções anteriores descreve a revisão histórica inicial e é substituída pelo caminho limitado e auditado desta integração. Da mesma forma, o bloqueio antes permanente por silêncio passa a requerer recuperação verificável; falhas sem prova suficiente continuam bloqueadas. As outras restrições e pendências nativas permanecem.
+
+
+## Correção cirúrgica CONT — 11/11/2026
+
+Base b6961c4, branch `codex/remora-1996-cont-surgical`.
+Retirado o veto drawdown/eventStep de OMClassify e OMRevalidate, sem novo
+limiar e sem alterar medição, inputs, financeiro ou o controle 1995. Completo
+regenerado fielmente. Atualizados os quatro oráculos que esperavam o defeito
+e acrescentadas regressões específicas. Diff e provas em
+`artifacts/correcao_cont_1996/`. COMPILACAO_NATIVA_NAO_VERIFICADA; NÃO HOMOLOGADO.

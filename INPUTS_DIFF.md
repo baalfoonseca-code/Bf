@@ -101,3 +101,14 @@ Os slots históricos `MACRO_GATE_ENABLED`, `LATE_DIRECTION_BLOCK_ENABLED` e `REJ
 ## Integração posterior
 
 A integração não altera os65 inputs efetivos, seus tipos, defaults ou ordem. `OM_LIVE_MAX_RECORDS=256` e `OM_LIVE_MAX_LAG_MSC=1000` são limites internos de trabalho analítico, documentados como orçamento, não parâmetros otimizados de entrada. Backlog excessivo aguarda timer. O reaproveitamento de `Inp_PathEventTicks` como tolerância de recuo da CONT foi reproduzido e permanece uma ambiguidade estratégica explícita, sem mudança silenciosa.
+
+
+## Correção cirúrgica CONT — 11/11/2026
+
+Esta revisão sucede a integração b6961c4; a associação de drawdown à amostragem,
+antes registrada como pendente, foi removida por autorização expressa do pedido
+atual. Nenhum dos 65 inputs (nome/tipo/ordem/default) mudou. Conferência individual:
+[Auditoria dos 65 inputs](artifacts/correcao_cont_1996/AUDITORIA.md). Resultado:
+48 herdados, 17 hipóteses previstas (6 defaults expressos e 11 de engenharia
+documentados). Não se atribui autorização numérica expressa a estes últimos.
+Inp_PathEventTicks permanece escala de medição, sem tolerância direta de recuo.

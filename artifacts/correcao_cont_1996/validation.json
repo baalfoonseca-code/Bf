@@ -1,0 +1,74 @@
+{
+  "base_commit": "b6961c4cdff4a9e3f99b64f06fac4d0551ef817e",
+  "branch": "codex/remora-1996-cont-surgical",
+  "baseline_tests": {
+    "command": "python3 -m unittest discover -s tests -v",
+    "count": 96,
+    "passed": 96,
+    "failed": 0,
+    "skipped": 0,
+    "seconds": 13.942,
+    "scope": "unmodified b6961c4 before surgery; observed runner result"
+  },
+  "changed_module_functions": [
+    "OMClassify",
+    "OMRevalidate"
+  ],
+  "module_functions_total": 38,
+  "untouched_files": [
+    "1995",
+    "RemoraScalper_MatrizObjetiva.mq5",
+    "RemoraScalper_1996_CONSOLIDADO.mq5",
+    "tools/build_consolidated.py"
+  ],
+  "input_count": 65,
+  "inputs_identical_to_base": true,
+  "hashes": {
+    "1995": "2479ed8e5c9189438d787be1e804abbd95f9e1c06e01042e560251e64ef67fc5",
+    "RemoraScalper_MatrizObjetiva.mq5": "f192f610bbc01cdd0275bd8980f9439ef654287ebdc52747abd641f98f57efd8",
+    "include/ObjectiveMatrix.mqh": "48cae587750f41b468b754c2ed2b7446f064120bee5b1ff53a388cdf556a9cf6",
+    "RemoraScalper_1996_Completo.mq5": "381673d13bdda0ab175bd11d5d603f65f4df9f56dc67f6b884d18eb553b87cc5"
+  },
+  "native_compile": "COMPILACAO_NATIVA_NAO_VERIFICADA",
+  "native_reason": "MetaEditor/MetaTrader5 not found in PATH or inspected /opt, /usr/local, /workspace/shared; Wine also unavailable",
+  "mt5_operational_tests": "NOT_EXECUTED",
+  "homologation": "NAO_HOMOLOGADO",
+  "new_sustainment_tests_against_unmodified_base": {
+    "run": 44,
+    "failures_reproducing_defect": 24,
+    "errors": 0,
+    "skipped": 0,
+    "log": "base-new-tests-red.txt",
+    "method": "Engine from git show b6961c4:include/ObjectiveMatrix.mqh compiled in temporary harness via patched ENGINE path; current checkout unchanged"
+  },
+  "final_tests": {
+    "command": "python3 -m unittest discover -s tests -v",
+    "count": 146,
+    "passed": 146,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "seconds": 20.563,
+    "original_suite_count": 96,
+    "updated_defect_oracles": 4,
+    "added_sustainment_cases": 44,
+    "added_execution_safety_cases": 6,
+    "scope": "portable shared-source engine/callback harness plus static checks, NOT MetaEditor/MT5",
+    "log": "test-results.txt"
+  },
+  "independent_review": {
+    "changed_functions_review": "approved; only existing drawdown/eventStep veto removed; no added operational predicate",
+    "new_tests_review": "50 tests independently rerun: passed, no skips; services explicitly simulated",
+    "input_audit": "AUDITORIA.md"
+  },
+  "evidence_hashes": {
+    "test-results.txt": "b355fd7dabbee156b85b74ba4a7b452572c21d4683ae2dccaf1c1a78073baf7a",
+    "base-new-tests-red.txt": "77f4a195401b7537e84d33ae24d4a7526c1c07ce970b087e8e489b33465c9ca2",
+    "functions.patch": "035a647cd76ee9d171e2e97bec2483f8710e4e7afe20b192ae64a260b55b746d"
+  },
+  "test_source_hashes": {
+    "tests/test_cont_sustainment.py": "d0793c62a9ae6ed21aac8b6158d95874ad1b3f994d9caa014858d148e909f411",
+    "tests/test_cont_execution_safety.py": "ef3be1f34694ea17d16d07f2fbee799c954b417d7cb3658c8b257558d458b831",
+    "tests/test_analytic_recovery.py": "1f2e1d47993700ce64f66f9980568e172386c96d2823437fe5e4f296802ceaf8"
+  }
+}
